@@ -130,6 +130,19 @@ jobs:
                 <key>LSHandlerRank</key>         <string>Alternate</string>
                 <key>LSItemContentTypes</key>    <array><string>io.fountain.screenplay</string></array>
               </dict>
+              <!--
+                Audio drama story files. `public.xml` is the system's own type
+                and no declaration of ours, deliberately: a screenplay editor
+                has no business becoming the machine's handler for every XML
+                file it meets. `Alternate` puts it in Open With and leaves the
+                association where it was.
+              -->
+              <dict>
+                <key>CFBundleTypeName</key>      <string>Audio drama</string>
+                <key>CFBundleTypeRole</key>      <string>Editor</string>
+                <key>LSHandlerRank</key>         <string>Alternate</string>
+                <key>LSItemContentTypes</key>    <array><string>public.xml</string></array>
+              </dict>
             </array>
             <key>UTExportedTypeDeclarations</key>
             <array>

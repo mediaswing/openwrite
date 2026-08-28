@@ -198,8 +198,8 @@ has not got one, the tab makes it** out of whoever speaks, offers you a voice
 for each of them, and **Save story** writes it back — so the casting is done
 once and kept in the file. The same is true of anybody who speaks but was left
 out of an existing cast list. `examples/sample-drama.xml` is a whole one to
-start from, and opening a `.xml` file — from the menu, or by double-clicking it
-— goes straight to the tab.
+start from, and opening a `.xml` file — from the menu, from the command line, or
+through **Open With** — goes straight to the tab.
 
 **What is done to the audio.** All of it is arithmetic on samples, on your
 machine, with nothing installed:
@@ -443,8 +443,9 @@ them with no dependencies at all.
 Tagged releases carry a macOS build for Apple Silicon, a Windows build for
 x86-64, and a `.deb` for x86-64 Debian- and Ubuntu-based distros, on the
 [releases page](../../releases). On macOS it is a `.app` bundle that opens
-`.sct` and `.fountain` files from Finder; on Windows it is a single
-executable; the `.deb` installs the binary to `/usr/bin` with
+`.sct` and `.fountain` files from Finder, and audio drama `.xml` files through
+**Open With** — it does not make itself the handler for every XML file on the
+machine; on Windows it is a single executable; the `.deb` installs the binary to `/usr/bin` with
 `sudo apt install ./screenplay-creation-tool-linux-x86_64.deb`.
 
 Neither the macOS nor the Windows download is notarised or signed with a paid

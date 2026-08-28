@@ -1,11 +1,12 @@
-//! The one or two things the editor has to remember between runs.
+//! The two things the editor has to remember between runs.
 //!
 //! Almost nothing here is a setting, on purpose: a screenplay carries its own
 //! state in its own file (see [`crate::document`]), and an editor that
 //! remembers which panes were open is an editor that eventually opens wrong.
-//! The language is the exception, and the reason is plain — somebody who has
-//! chosen to work in their own language should not have to choose again every
-//! morning.
+//! There are two exceptions, and both earn it. The language, because somebody
+//! who has chosen to work in their own language should not have to choose
+//! again every morning. And the ElevenLabs key, because a key that had to be
+//! pasted in again before every recording would not be worth having.
 //!
 //! The file is written only when something changes, and a file that cannot be
 //! read is not an error worth interrupting anybody over: the defaults are
