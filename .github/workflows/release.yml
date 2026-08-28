@@ -32,7 +32,7 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: System libraries
         run: |
@@ -67,7 +67,7 @@ jobs:
     # An Apple Silicon runner, so the build is native and needs no cross target.
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build
         run: cargo build --locked --release
@@ -172,7 +172,7 @@ jobs:
           # bundle, symbolic links and resource forks included.
           ditto -c -k --sequesterRsrc --keepParent "$app" "$BINARY-macos-aarch64.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: macos-aarch64
           path: ${{ env.BINARY }}-macos-aarch64.zip
@@ -189,7 +189,7 @@ jobs:
       # meant to keep out of a release.
       RUSTFLAGS: -C target-feature=+crt-static
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build
         run: cargo build --locked --release
@@ -231,7 +231,7 @@ jobs:
         shell: pwsh
         run: Copy-Item "target\release\${env:BINARY}.exe" "${env:BINARY}-windows-x86_64.exe"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: windows-x86_64
           path: ${{ env.BINARY }}-windows-x86_64.exe
@@ -245,7 +245,7 @@ jobs:
     # the other way.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: System libraries
         # The window and the file dialogs reach X11, Wayland and xkbcommon
@@ -283,7 +283,7 @@ jobs:
           dpkg-deb --info "$BINARY-linux-x86_64.deb"
           dpkg-deb --contents "$BINARY-linux-x86_64.deb"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: linux-x86_64
           path: ${{ env.BINARY }}-linux-x86_64.deb
@@ -299,7 +299,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: downloads
           merge-multiple: true

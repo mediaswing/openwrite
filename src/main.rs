@@ -64,7 +64,9 @@ ENVIRONMENT
                       The API key for the Audio Drama tab. Takes precedence
                       over the one in the settings file, and is never written
                       to disk -- which is the way to use one without leaving
-                      it lying about.
+                      it lying about. Keys are made at
+                      elevenlabs.io -> Settings -> API keys; the tab has a
+                      button that opens the page.
   OPENWRITE_ELEVENLABS_MODEL
                       Which ElevenLabs voice model to use.
                       Default eleven_multilingual_v2.

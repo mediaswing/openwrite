@@ -235,12 +235,41 @@ after what is in it also means it survives editing, so adding a line at the top
 of a scene does not re-bill you for every line underneath it. Recordings no line
 asks for any more are swept up at the end of a run.
 
-Your API key can go in the settings file, where the tab's **Remember** button
-puts it. That file is plain text: anyone who can read it can spend the key.
-Setting `OPENWRITE_ELEVENLABS_KEY` in the environment takes precedence over it
-and is never written to disk, which is the way to use a key without leaving it
-lying about. `OPENWRITE_ELEVENLABS_MODEL` chooses the voice model
-(`eleven_multilingual_v2` by default).
+**Getting a key.** The tab cannot record without one, and the key is what
+ElevenLabs bills, so it is worth a minute of care.
+
+1. Make an account at [elevenlabs.io](https://elevenlabs.io). The free tier
+   comes with a monthly character allowance and is enough to hear a scene; every
+   line you record spends characters from it, and a line you have already
+   recorded costs nothing to render again.
+2. Go to **Settings → API keys**, which is what the tab's **Get a key** button
+   opens for you — it is
+   [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys).
+3. Create a key. **Copy it there and then**: ElevenLabs shows the whole key once
+   and never again, so a key you did not copy is a key you have to replace.
+4. If it offers to restrict what the key may do, restrict it. This tool needs
+   only *text to speech* and permission to *read voices* — nothing else it can
+   be given is anything this tool will ever ask for. Setting a credit limit on
+   the key is a good idea for the same reason.
+5. Paste it into **ElevenLabs API key** in the tab, and press **Fetch voices**.
+   If the key is good, the cast list fills with voices to choose from; if it is
+   not, the tab says what ElevenLabs said about it.
+
+**Where the key is kept.** Pressing **Remember** puts it in the settings file
+beside your language choice. That file is plain text: anyone who can read it can
+spend the key, so do not copy it between machines, into a repository, or into a
+bug report. The file says as much at the top of itself, and is written so that
+only your account can read it.
+
+Setting `OPENWRITE_ELEVENLABS_KEY` in the environment takes precedence over the
+saved one and is never written to disk, which is the way to use a key without
+leaving it lying about — on a shared machine, or when the key belongs to someone
+else. The tab says which of the two it is using. If a key does get out, delete
+it on the API keys page: a deleted key stops working immediately, and making a
+new one costs nothing.
+
+`OPENWRITE_ELEVENLABS_MODEL` chooses the voice model (`eleven_multilingual_v2`
+by default).
 
 Nothing is sent until you press **Record**, and a recording can be stopped
 between lines. HTTPS is `curl`, as it is for the update check — there is no TLS
