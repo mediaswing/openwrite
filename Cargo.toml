@@ -1,0 +1,59 @@
+[package]
+name = "openwrite"
+version = "1.3.0"
+edition = "2021"
+description = "An accessible screenplay editor and Fountain formatter"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/mediaswing/openwrite"
+readme = "README.md"
+keywords = ["screenplay", "fountain", "screenwriting", "formatter"]
+categories = ["gui", "text-processing"]
+
+[features]
+default = ["gui", "ai", "update"]
+# The window. `--no-default-features` leaves it out, which builds the
+# formatting engine as a dependency-free library and a binary that does nothing
+# but `--help`, `--version` and `--self-check`.
+gui = ["dep:eframe", "dep:rfd"]
+# Talking to a local model server. No dependencies either — it is a few hundred
+# lines of HTTP and JSON over `std::net` — but it is the one part of the program
+# that opens a socket, so it can be compiled out entirely.
+ai = []
+# Asking GitHub, once at startup, whether there is a newer release. The other
+# thing this program does over the network, and the only one it does without
+# being asked — so it is a feature, and `OPENWRITE_NO_UPDATE_CHECK` turns it off
+# in a build that has it.
+update = []
+
+[dependencies]
+# `accesskit` is on by default in eframe, which is what gives the window a real
+# platform accessibility tree (VoiceOver / Narrator / Orca).
+eframe = { version = "0.36", optional = true }
+rfd = { version = "0.17", optional = true }
+
+[[bin]]
+name = "screenplay-creation-tool"
+path = "src/main.rs"
+
+[lib]
+name = "openwrite"
+path = "src/lib.rs"
+
+[profile.release]
+lto = true
+strip = true
+
+[package.metadata.deb]
+maintainer = "mediaswing <mediaswing@outlook.com>"
+copyright = "2026, mediaswing"
+section = "editors"
+priority = "optional"
+assets = [
+    ["target/release/screenplay-creation-tool", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/openwrite/README.md", "644"],
+    # The reference language file, so a translator on a packaged install has
+    # something to copy without going to the repository for it.
+    ["assets/lang/en.toml", "usr/share/doc/openwrite/en.toml", "644"],
+    ["assets/fonts/UBUNTU-FONT-LICENCE-1.0.txt", "usr/share/doc/openwrite/UBUNTU-FONT-LICENCE-1.0.txt", "644"],
+    ["examples/sample.fountain", "usr/share/doc/openwrite/examples/sample.fountain", "644"],
+]

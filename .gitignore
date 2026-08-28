@@ -1,0 +1,5 @@
+# Build output.
+/target
+
+# macOS leaves these in every folder it looks at.
+.DS_Store

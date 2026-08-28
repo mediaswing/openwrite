@@ -1,0 +1,527 @@
+# Screenplay Creation Tool language file — English
+#
+# This is the reference file. Every other language is checked against it by a
+# test: same keys, same {placeholders}. To start a new language, copy this file,
+# change `code`, `name` and `plural` at the top, and translate the right-hand
+# side of each line. Leave the keys alone.
+#
+# Drop your file into the `languages` folder — the language window has a button
+# that opens it — and it appears in the picker. Nothing needs rebuilding.
+#
+# A few things worth knowing before you start:
+#
+#   {C}          becomes ⌘ on a Mac and Ctrl+ on Windows. Put it wherever the
+#                sentence needs it; you never have to write ⌘ yourself.
+#   {name}       and the other braced words are values the program fills in. You
+#                may move them anywhere in the sentence, but do not rename them.
+#   .one/.other  a counted message. Give every form your language uses — see
+#                `plural` below.
+#   "…" "…"      a long value continued on the next line. The two are joined
+#                exactly as written, so mind the space at the end of the first.
+#
+# You do not have to finish. Any line you have not translated falls back to the
+# English one here, so the editor stays usable from your very first line.
+#
+# One thing is not translatable, and it is deliberate: Fountain markup. INT.,
+# EXT., the colon in MAYA: Forty-one. and /transition: are what the parser
+# reads, and they stay as they are in every language. Where they appear below
+# they are marked.
+
+code   = "en"
+name   = "English"
+
+# Which plural rule this language follows. One of:
+#   one_other   one form for 1, another for everything else (English, German,
+#               Spanish, Italian, Dutch, Swedish)
+#   french      as above, but 0 also takes the singular (French, pt-BR)
+#   polish      one / few / many
+#   russian     one / few / many, counted differently (Russian, Ukrainian)
+plural = "one_other"
+
+
+# ------------------------------------------------------------ the window title
+
+# The program's own name is not translated. These put the document beside it.
+window.title = "{name} — {app}"
+window.title.edited = "{name} — edited — {app}"
+
+
+# --------------------------------------------------------------- the menu bar
+
+menu.file = "File"
+menu.edit = "Edit"
+menu.story = "Story"
+menu.view = "View"
+menu.navigate = "Navigate"
+menu.help = "Help"
+menu.language = "Language…"
+# The document name at the right-hand end of the menu bar, when it has unsaved
+# changes.
+menu.edited = "{name} • edited"
+
+view.colour_scheme = "Colour scheme"
+scheme.system = "Match system"
+scheme.light = "Light"
+scheme.dark = "Dark"
+
+
+# ------------------------------------------------------------------ the panes
+
+pane.outline = "Scene outline"
+pane.editor = "Screenplay editor"
+pane.preview = "Formatted preview"
+
+outline.heading = "Scenes"
+outline.empty = "No scenes yet."
+outline.empty.hint = "A scene heading starts with INT. or EXT."   # markup
+
+preview.heading = "Formatted"
+preview.page = "Page {page}"
+preview.title_page = "Title page"
+
+editor.heading = "Screenplay"
+editor.markup = "Fountain markup"
+editor.markup.hint = "Fountain, plus a one-line way to write a speech:\n"
+                     "MAYA: Forty-one.\n"
+                     "DEV (not looking up): You know what this is.\n"
+                     "/transition:cut to\n\n"
+                     "Press F1 for the whole list. Saving as .fountain writes "
+                     "the one-line form out in full."
+editor.hint = "INT. SOMEWHERE - DAY"   # markup
+
+
+# ------------------------------------------------------- the status bar
+
+# The three counts, side by side.
+status.summary = "{pages} · {scenes} · {words}"
+status.help_hint = "{keys} for help"
+
+phrase.pages.one = "1 page"
+phrase.pages.other = "{n} pages"
+phrase.scenes.one = "1 scene"
+phrase.scenes.other = "{n} scenes"
+phrase.words.one = "1 word"
+phrase.words.other = "{n} words"
+phrase.speeches.one = "1 speech"
+phrase.speeches.other = "{n} speeches"
+phrase.entries.one = "1 entry"
+phrase.entries.other = "{n} entries"
+phrase.warnings.one = "1 warning or error"
+phrase.warnings.other = "{n} warnings or errors"
+
+
+# --------------------------------------------- what the editor says it has done
+#
+# These are the announcements in the status bar. A screen reader reads them out
+# as they change, so they are sentences rather than labels.
+
+status.first_screenplay = "New screenplay. Press F1 for the shortcuts and the markup."
+status.new_screenplay = "New screenplay"
+status.opened = "Opened {name}{resumed}{notes}"
+status.opened.resumed = ", at where you left off"
+status.opened.profiles.one = ", with 1 character profile"
+status.opened.profiles.other = ", with {n} character profiles"
+status.saved = "Saved {name}"
+status.saved_fountain = "Saved a plain Fountain copy of {name}"
+status.saved_fountain_only = "Saved a plain Fountain copy of {name}. The world and character "
+                             "notes are only kept in the .{extension} file."
+status.exported = "Exported {name} as {format}"
+status.copied_script = "Copied the formatted screenplay, {pages}, to the clipboard"
+status.save_cancelled = "Save cancelled"
+status.open_cancelled = "Open cancelled"
+status.export_cancelled = "Export cancelled"
+status.unsaved = "This screenplay has unsaved changes."
+status.cancelled = "Cancelled"
+
+status.scene = "Scene {index} of {total}, page {page}. {heading}"
+status.no_scenes = "No scenes yet. A scene heading starts with INT. or EXT."   # markup
+status.pane.outline_empty = "{pane}, empty"
+status.pane.outline.one = "{pane}, 1 scene"
+status.pane.outline.other = "{pane}, {n} scenes"
+status.pane.preview = "{pane}, {pages}"
+
+status.find_opened = "Find. Type a phrase, then press Return."
+status.nothing_to_find = "Nothing to find"
+status.no_matches = "No matches for “{query}”"
+status.matches.one = "1 match for “{query}”."
+status.matches.other = "{n} matches for “{query}”. Match 1 of {n}."
+status.nothing_found_yet = "No matches. Use Find to search first."
+status.match_of = "Match {index} of {total}"
+
+status.outline_shown = "Scene outline shown"
+status.outline_hidden = "Scene outline hidden"
+status.preview_shown = "Formatted preview shown"
+status.preview_hidden = "Formatted preview hidden"
+status.contrast_on = "High contrast on"
+status.contrast_off = "High contrast off"
+status.text_size = "Text size {percent}%"
+status.colour_scheme = "Colour scheme: {name}"
+
+status.help_opened = "Shortcuts and markup. Press Escape to close."
+status.help_closed = "Closed shortcuts and markup"
+
+
+# ------------------------------------------------------------------- the files
+
+file.untitled = "Untitled"
+file.screenplay = "Screenplay"
+
+dialog.open.title = "Open screenplay"
+dialog.save.title = "Save screenplay"
+dialog.export.title = "Export formatted screenplay"
+
+# The kinds of file the open and save dialogs offer.
+filter.screenplays = "Screenplays"
+filter.document = "Screenplay Creation Tool"
+filter.fountain = "Fountain screenplay"
+filter.text = "Formatted text"
+filter.html = "HTML, for printing to PDF"
+filter.fdx = "Final Draft"
+filter.text_log = "Text"
+
+
+# ---------------------------------------------------- the shortcuts and markup
+
+help.title = "Shortcuts and markup"
+
+group.file = "File"
+group.edit = "Edit"
+group.story = "Story"
+group.navigate = "Navigate"
+group.view = "View"
+group.help = "Help"
+group.writing = "Writing"
+group.within_pane = "Within a pane"
+
+shortcut.new = "New screenplay"
+shortcut.open = "Open a Fountain file"
+shortcut.save = "Save"
+shortcut.save_as = "Save as"
+shortcut.export = "Export formatted script (text, HTML or Final Draft)"
+shortcut.copy_formatted = "Copy the formatted script to the clipboard"
+shortcut.close = "Close the window"
+shortcut.characters = "Characters and world"
+shortcut.assist = "Ideas from a local model"
+shortcut.find = "Find in the screenplay"
+shortcut.find_next = "Find next match"
+shortcut.find_previous = "Find previous match"
+shortcut.focus_outline = "Move focus to the scene outline"
+shortcut.focus_editor = "Move focus to the editor"
+shortcut.focus_preview = "Move focus to the formatted preview"
+shortcut.cycle_pane = "Move focus to the next pane"
+shortcut.cycle_pane_back = "Move focus to the previous pane"
+shortcut.next_scene = "Go to the next scene"
+shortcut.previous_scene = "Go to the previous scene"
+shortcut.zoom_in = "Larger text"
+shortcut.zoom_out = "Smaller text"
+shortcut.zoom_reset = "Reset text size"
+shortcut.toggle_outline = "Show or hide the scene outline"
+shortcut.toggle_preview = "Show or hide the formatted preview"
+shortcut.toggle_contrast = "Turn high contrast on or off"
+shortcut.help = "Shortcuts and markup"
+shortcut.debug_log = "Debug log"
+
+# What each piece of markup does. The markup itself is in the left-hand column
+# of the help window and is the same in every language; only these are words.
+help.markup.scene = "Starts a scene"
+help.markup.forced = "A scene heading that does not start INT. or EXT."
+help.markup.cue = "A character cue: capitals, with the speech underneath"
+help.markup.one_line = "The same speech, written on one line"
+help.markup.parenthetical = "...with a stage direction under the cue"
+help.markup.transition = "A transition, printed as CUT TO:"
+help.markup.section = "A section: in the outline, never printed"
+help.markup.synopsis = "A synopsis: in the outline, never printed"
+help.markup.note = "The one-line speech and /transition: are this tool's own, not standard "
+                   "Fountain. Saving as .fountain writes them out in full, so another "
+                   "program reads the same screenplay."
+
+# Keys that are named rather than pressed as a shortcut. The names are the ones
+# printed on the keyboard, so translate them the way your keyboards are labelled.
+help.key.tab = "Tab"
+help.key.arrows = "Arrow keys"
+help.key.return = "Return"
+help.key.escape = "Escape"
+help.within.tab = "Move to the next control"
+help.within.arrows = "Move through the outline, or scroll the preview"
+help.within.return = "Open the selected scene"
+help.within.escape = "Close this window"
+
+
+# ---------------------------------------------------------------- the dialogs
+
+find.title = "Find"
+find.label = "Find in screenplay"
+find.hint = "Phrase or character name"
+find.go = "Find"
+
+confirm.title = "Unsaved changes"
+confirm.body = "This screenplay has changes that have not been saved."
+
+error.title = "Something went wrong"
+
+button.save = "Save"
+button.discard = "Discard"
+button.cancel = "Cancel"
+button.close = "Close"
+button.ok = "OK"
+button.copy = "Copy"
+button.clear = "Clear"
+button.add = "Add"
+button.remove = "Remove"
+button.remove_sure = "Remove — sure?"
+
+
+# ------------------------------------------------- the characters and world
+
+bible.title = "Characters and world"
+bible.world = "The world"
+bible.world.hint = "The setting and its rules — what is true in this story that would not be "
+                   "true anywhere else."
+bible.world.placeholder = "Ashfen stands on a salt lake. The Guild rules by writ."
+bible.world.describe = "Notes on the setting and its rules. Saved with the screenplay, never "
+                       "printed in it."
+bible.characters = "The characters"
+bible.nobody = "Nobody yet. Add a name, or take the ones who already speak."
+bible.new_character = "New character"
+bible.new_character.name = "New character name"
+bible.adopt_one = "Add {name} from the script"
+bible.adopt.one = "Add 1 more from the script"
+bible.adopt.other = "Add {n} more from the script"
+bible.nothing_written = "Nothing written yet"
+bible.has_notes = "Has notes"
+bible.choose_someone = "Choose a character to write about them."
+bible.in_the_script = "{speeches} in the script, {words}"
+bible.not_spoken = "Has not spoken in the script yet"
+
+# The questions each field asks. They are questions rather than headings on
+# purpose: "Wants" gets a writer further than "Motivation".
+bible.field.role = "Role"
+bible.field.role.hint = "Who they are in the story"
+bible.field.age = "Age"
+bible.field.age.hint = "However you want to put it"
+bible.field.wants = "Wants"
+bible.field.wants.hint = "What they are after, in this story"
+bible.field.voice = "Voice"
+bible.field.voice.hint = "How they talk, and what they never say"
+bible.field.notes = "Notes"
+bible.field.notes.hint = "Background, contradictions, anything else"
+
+bible.footer.unsaved = "Unsaved changes. These notes are saved with the screenplay."
+bible.footer.saved = "Saved with the screenplay."
+bible.save = "Save screenplay"
+bible.save.unsaved = "Save screenplay, including these notes"
+bible.save.saved = "Save screenplay. Nothing has changed since the last save."
+bible.save.describe = "The world and the character notes are part of the screenplay document "
+                      "and are saved with it."
+
+status.characters_opened_empty = "Characters and world. No characters yet."
+status.characters_opened.one = "Characters and world. 1 character."
+status.characters_opened.other = "Characters and world. {n} characters."
+status.characters_closed = "Closed characters and world"
+status.selected = "{name} selected"
+status.type_a_name = "Type a name first"
+status.already_here = "{name} is already here"
+status.added = "Added {name}"
+status.everybody_here = "Everybody who speaks is already here"
+status.added_from_script.one = "Added 1 character from the script"
+status.added_from_script.other = "Added {n} characters from the script"
+status.removed = "Removed {name}"
+status.remove_sure = "Remove {name} and everything written about them? Press Remove again."
+
+
+# ---------------------------------------------------------------- the ideas
+
+ideas.title = "Ideas"
+ideas.ask = "Ask"
+ideas.about = "About"
+ideas.model = "Model"
+ideas.choose = "Choose"
+ask.do = "What would they do?"
+ask.say = "What would they say?"
+ask.next = "What happens next?"
+ask.do.named = "What would {name} do?"
+ask.say.named = "What would {name} say?"
+
+ideas.looking = "Looking for a local model…"
+ideas.thinking = "Thinking…"
+ideas.starting = "Starting Ollama… this can take a few seconds"
+ideas.none_found = "No local model found"
+ideas.look = "Look for a model"
+ideas.look_again = "Look again"
+ideas.look.hint = "Looks at {url}"
+ideas.on_this_machine = "on this machine"
+ideas.at_address = "at {address}"
+ideas.summary.no_models = "{backend} {place}, with no models installed"
+ideas.summary.one = "{backend} {place}, 1 model"
+ideas.summary.other = "{backend} {place}, {n} models"
+
+ideas.installed_not_running = "Ollama is installed but not running."
+ideas.start = "Start Ollama"
+ideas.start.hint = "Runs `ollama serve` and waits for it to answer"
+ideas.no_server = "No model server on this machine."
+ideas.get = "Get Ollama"
+ideas.get.note = "— free, runs offline"
+ideas.trouble.hint = "The debug log has the full detail."
+ideas.remote = "This model is on another machine ({url}). What you ask goes over the network "
+               "to it."
+ideas.nobody = "Nobody has spoken yet, and nobody is written down."
+ideas.no_notes = "no notes yet — the answer will be a guess"
+ideas.nothing_to_go_on = "There is nothing to go on yet. Write a scene, or fill in the world "
+                         "and a character, and ask again."
+
+ideas.suggest = "Suggest"
+ideas.suggest.hint = "Sends the world, the character notes and the page you are on to the "
+                     "local model, and puts its answer in the suggestion box below."
+ideas.suggestion = "Suggestion"
+ideas.suggestion.hint = "Edit it here first. Nothing reaches the screenplay until you insert it."
+ideas.suggestion.placeholder = "The model's answer appears here."
+ideas.suggestion.describe = "The model's answer, in Fountain. Edit it, then insert it at the "
+                            "caret or copy it."
+ideas.insert = "Insert at the caret"
+ideas.insert.hint = "Puts the suggestion into the screenplay where the caret is."
+ideas.stopped = "The request stopped without an answer"
+ideas.stopped.detail = "The request stopped without an answer."
+ideas.no_answer = "The model could not answer"
+
+status.looking = "Looking for a local model."
+status.looking_at = "Looking for a local model at {url}"
+status.starting_ollama = "Starting Ollama. This can take a few seconds."
+status.found_model = "Found {summary}"
+status.ideas_open = "Ideas. {ask}"
+status.ideas_closed = "Closed ideas"
+status.asking = "{ask} Asking the model…"
+status.suggestion_ready.one = "Suggestion ready, 1 line. It is in the suggestion box; nothing "
+                              "has been put in the screenplay."
+status.suggestion_ready.other = "Suggestion ready, {n} lines. It is in the suggestion box; "
+                                "nothing has been put in the screenplay."
+status.nothing_to_insert = "There is no suggestion to insert"
+status.inserted.one = "Inserted 1 line into the screenplay"
+status.inserted.other = "Inserted {n} lines into the screenplay"
+status.suggestion_copied = "Copied the suggestion to the clipboard"
+status.suggestion_cleared = "Cleared the suggestion"
+status.opened_page = "Opened {url}"
+status.no_model_feature = "This build was made without the local model feature."
+
+
+# ------------------------------------------------------------- the debug log
+
+log.title = "Debug log"
+log.summary = "{entries}, {trouble}"
+log.nothing_wrong = "nothing wrong"
+log.routine = "Routine entries"
+log.routine.hint = "Include the repagination that happens on every keystroke. Off unless you "
+                   "are looking into something being slow."
+log.also_written = "Also written to {name}"
+log.memory_only = "In memory only. Set {variable} to a path to keep a copy on disk, which is "
+                  "the only way to see the last entries from a run that ended badly."
+log.describe = "What the program did, most recent last. It records the program's own workings, "
+               "not the screenplay."
+log.save = "Save to a file…"
+log.save.hint = "Writes the whole log, routine entries included."
+log.save.title = "Save the debug log"
+
+status.log_opened = "Debug log. {entries}, {trouble}."
+status.log_closed = "Closed the debug log"
+status.log_copied = "Copied the debug log to the clipboard"
+status.log_cleared = "Cleared the debug log"
+status.log_saved = "Saved the debug log as {name}"
+
+
+# ------------------------------------------------------------ a newer version
+
+update.title = "A newer version"
+update.headline = "Version {version} is available."
+update.yours = "You have {version}."
+update.download = "Download"
+update.download.hint = "Opens {url} in your browser"
+update.not_now = "Not now"
+update.note = "Checked once at startup. Set {variable} to stop it."
+
+status.update_available = "Version {version} is available. You have {yours}."
+status.download_page = "Opened the download page for {tag}"
+status.link_copied = "{error}. The link is on the clipboard."
+status.update_dismissed = "Carrying on with this version"
+
+
+# --------------------------------------------------------------- the language
+
+language.title = "Language"
+language.caption = "The language this editor is written in"
+language.system = "Match this computer"
+language.hint = "Changes everything the window says, straight away. Nothing is restarted."
+language.help = "A language is one plain text file. Copy the English one out of the program's "
+                "assets folder, translate the right-hand side of each line, and put it in the "
+                "folder below — it appears in the list above without rebuilding anything. Any "
+                "line you have not reached yet falls back to English."
+language.folder = "Languages folder: {path}"
+language.show_folder = "Show the folder"
+language.show_folder.hint = "Opens the languages folder in your file manager, making it if it "
+                            "is not there yet."
+language.reload = "Reload the language files"
+language.reload.hint = "Re-reads the folder, so an edit shows up here without restarting."
+language.problem_count.one = "1 line of this language file could not be read:"
+language.problem_count.other = "{n} lines of this language file could not be read:"
+language.problem = "Line {line}: {what}"
+language.no_folder = "There is nowhere on this computer to keep language files."
+language.folder_failed = "The languages folder could not be made: {error}"
+
+status.language_opened = "Language. Currently {name}."
+status.language_closed = "Closed the language window"
+status.language_changed = "The editor is now in {name}"
+status.language_reloaded = "Language files reloaded. The editor is in {name}."
+status.folder_opened = "Opened {path}"
+
+
+# ------------------------------------------------------------- what went wrong
+
+error.open = "Could not open {name}: {error}"
+error.save = "Could not save: {error}"
+error.export = "Could not export: {error}"
+error.log_save = "Could not save the debug log: {error}"
+error.browser = "could not open a browser: {error}"
+error.file_manager = "could not open a file manager: {error}"
+error.not_a_web_address = "{url} is not a web address"
+error.not_a_folder = "{path} is not a folder"
+
+
+# ------------------------------------------------------- what a screen reader says
+#
+# These are read aloud rather than shown. They say the same things the window
+# does, at more length, because a screen reader user cannot see what surrounds
+# them.
+
+a11y.summary = "Script summary: {summary}"
+a11y.scene = "Scene {index} of {total}: {heading}"
+a11y.page = "Page {page}"
+a11y.page_body = "{label}. {text}"
+a11y.preview_hint = "The screenplay as it will print. Arrow keys and Page Up or Page Down "
+                    "scroll it."
+a11y.editor_hint = "Fountain markup. A line starting with INT. or EXT. is a scene heading; an "
+                   "all-capitals line above a line of text is a character cue; and a name, a "
+                   "colon and a line of speech together on one line is a speech too. Press F1 "
+                   "for the whole list."
+a11y.character = "{name}, character {index} of {total}"
+a11y.field = "{field}, {name}"
+a11y.adopt = "{names} speak but have no notes"
+a11y.remove = "Remove {name}"
+a11y.remove_armed = "Remove {name} for good. Press again to confirm."
+a11y.model_server = "Model server: {state}"
+a11y.which_character = "Which character"
+a11y.which_model = "Which model"
+a11y.suggest = "Suggest. {ask}"
+a11y.log = "Debug log: {summary}"
+
+
+# ---------------------------------------------------------- the empty screenplay
+#
+# What a new screenplay starts as: a page of working markup rather than an empty
+# box. INT., the capitals, the colon form and /transition: are markup the parser
+# reads — keep them exactly as they are, and translate the prose around them.
+
+welcome.screenplay = "Title: Untitled\nAuthor:\n\n"
+                     "INT. SOMEWHERE - DAY\n\n"
+                     "Type here. A line beginning with INT. or EXT. starts a scene.\n\n"
+                     "A CHARACTER\n(quietly)\n"
+                     "Put a name in capitals above a line to make it dialogue.\n\n"
+                     "SOMEBODY ELSE: Or write the name, a colon, and the line, all in one go.\n\n"
+                     "/transition:cut to\n"

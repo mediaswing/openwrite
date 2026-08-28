@@ -1,0 +1,304 @@
+# Builds the three downloads, and publishes them when a version is tagged.
+#
+# Pushing a `v*` tag builds, checks and publishes a release. Running the
+# workflow by hand builds and uploads the same artifacts without publishing
+# anything, which is how to find out whether a build is broken before tagging.
+#
+# Every build does two things beyond compiling. It runs the binary it just
+# built with `--self-check`, which drives the parser, the layout and all three
+# renderers over a sample screenplay — `cargo test` proves the source was sound
+# when it compiled, not that the executable being uploaded starts and works. And
+# it lists what the executable links, because the most common way a download
+# fails is a library that was on the build machine and is not on the writer's.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # The name Cargo gives the executable, so the packaging steps below have one
+  # place to read it from.
+  BINARY: screenplay-creation-tool
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libx11-dev libxkbcommon-dev libwayland-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: Test
+        run: cargo test --locked --all-features
+
+      - name: The engine builds on its own
+        # The formatting engine has no dependencies, and a change that quietly
+        # made it need one would only show up here.
+        run: cargo build --locked --no-default-features
+
+      - name: The tag and Cargo.toml agree
+        if: startsWith(github.ref, 'refs/tags/v')
+        # A release whose binary reports a different version than the tag it was
+        # published under would have every copy of the editor offering an update
+        # to a version it is already running.
+        run: |
+          set -euo pipefail
+          tagged="${GITHUB_REF_NAME#v}"
+          declared="$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)"
+          echo "tag $tagged, Cargo.toml $declared"
+          test "$tagged" = "$declared"
+
+  macos:
+    name: macOS (Apple Silicon)
+    needs: test
+    # An Apple Silicon runner, so the build is native and needs no cross target.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: cargo build --locked --release
+
+      - name: Check itself
+        run: ./target/release/$BINARY --self-check
+
+      - name: What it links
+        # Nothing outside the two folders every Mac has. A dylib from Homebrew
+        # would work here and be missing on the machine that downloads it.
+        run: |
+          set -euo pipefail
+          otool -L "target/release/$BINARY"
+          stray="$(
+            otool -L "target/release/$BINARY" | tail -n +2 | awk '{print $1}' |
+              grep -v -e '^/usr/lib/' -e '^/System/Library/' || true
+          )"
+          if [ -n "$stray" ]; then
+            echo "::error::not part of macOS: $stray"
+            exit 1
+          fi
+
+      - name: Wrap it in an app bundle
+        # Written out here rather than with a packaging tool: a bundle is a
+        # folder with a plist in it, and every asset the editor needs — the
+        # font, the English language file, the sample screenplay — is already
+        # compiled into the executable.
+        run: |
+          set -euo pipefail
+          version="$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)"
+          app="Screenplay Creation Tool.app"
+          mkdir -p "$app/Contents/MacOS"
+          cp "target/release/$BINARY" "$app/Contents/MacOS/$BINARY"
+          printf 'APPL????' > "$app/Contents/PkgInfo"
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>              <string>Screenplay Creation Tool</string>
+            <key>CFBundleDisplayName</key>       <string>Screenplay Creation Tool</string>
+            <key>CFBundleIdentifier</key>        <string>com.mediaswing.openwrite</string>
+            <key>CFBundleExecutable</key>        <string>$BINARY</string>
+            <key>CFBundlePackageType</key>       <string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$version</string>
+            <key>CFBundleVersion</key>           <string>$version</string>
+            <key>LSMinimumSystemVersion</key>    <string>11.0</string>
+            <key>NSHighResolutionCapable</key>   <true/>
+            <key>CFBundleDocumentTypes</key>
+            <array>
+              <dict>
+                <key>CFBundleTypeName</key>      <string>Screenplay Creation Tool document</string>
+                <key>CFBundleTypeRole</key>      <string>Editor</string>
+                <key>LSHandlerRank</key>         <string>Owner</string>
+                <key>LSItemContentTypes</key>    <array><string>com.mediaswing.openwrite.sct</string></array>
+              </dict>
+              <dict>
+                <key>CFBundleTypeName</key>      <string>Fountain screenplay</string>
+                <key>CFBundleTypeRole</key>      <string>Editor</string>
+                <key>LSHandlerRank</key>         <string>Alternate</string>
+                <key>LSItemContentTypes</key>    <array><string>io.fountain.screenplay</string></array>
+              </dict>
+            </array>
+            <key>UTExportedTypeDeclarations</key>
+            <array>
+              <dict>
+                <key>UTTypeIdentifier</key>      <string>com.mediaswing.openwrite.sct</string>
+                <key>UTTypeDescription</key>     <string>Screenplay Creation Tool document</string>
+                <key>UTTypeConformsTo</key>      <array><string>public.plain-text</string></array>
+                <key>UTTypeTagSpecification</key>
+                <dict><key>public.filename-extension</key><array><string>sct</string></array></dict>
+              </dict>
+            </array>
+            <key>UTImportedTypeDeclarations</key>
+            <array>
+              <dict>
+                <key>UTTypeIdentifier</key>      <string>io.fountain.screenplay</string>
+                <key>UTTypeDescription</key>     <string>Fountain screenplay</string>
+                <key>UTTypeConformsTo</key>      <array><string>public.plain-text</string></array>
+                <key>UTTypeTagSpecification</key>
+                <dict><key>public.filename-extension</key><array><string>fountain</string></array></dict>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+          plutil -lint "$app/Contents/Info.plist"
+          # `ditto` rather than `zip`: it is the one that keeps a bundle a
+          # bundle, symbolic links and resource forks included.
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$BINARY-macos-aarch64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64
+          path: ${{ env.BINARY }}-macos-aarch64.zip
+          if-no-files-found: error
+
+  windows:
+    name: Windows (x86-64)
+    needs: test
+    runs-on: windows-latest
+    env:
+      # Static CRT, so the download is one file that runs on a clean Windows
+      # rather than one that wants the Visual C++ redistributable installed
+      # first. That is exactly the sort of missing library this workflow is
+      # meant to keep out of a release.
+      RUSTFLAGS: -C target-feature=+crt-static
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: cargo build --locked --release
+
+      - name: Check itself
+        # This is a windowed executable with no console, so PowerShell does not
+        # wait for it and there is nothing to read but the exit code.
+        shell: pwsh
+        run: |
+          $exe = "target\release\${env:BINARY}.exe"
+          $run = Start-Process -FilePath $exe -ArgumentList "--self-check" -Wait -PassThru -NoNewWindow
+          if ($run.ExitCode -ne 0) { throw "--self-check exited $($run.ExitCode)" }
+
+      - name: What it links
+        shell: pwsh
+        run: |
+          $exe = "target\release\${env:BINARY}.exe"
+          $dumpbin = Get-ChildItem -Path "C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\MSVC\*\bin\Host*\x64\dumpbin.exe" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $dumpbin) {
+            # Not fatal: --self-check above already loaded the executable, which
+            # every DLL it imports had to resolve for.
+            Write-Warning "dumpbin not found; the self-check is the only proof this run has"
+            exit 0
+          }
+          $out = & $dumpbin.FullName /dependents $exe
+          $out
+          foreach ($line in $out) {
+            $dll = $line.Trim()
+            if ($dll -notmatch '(?i)^[A-Za-z0-9._-]+\.dll$') { continue }
+            # vcruntime and msvcp are the ones a clean Windows has not got.
+            if ($dll -match '(?i)^(vcruntime|msvcp|concrt)') {
+              Write-Error "$dll is not part of Windows"
+              exit 1
+            }
+          }
+
+      - name: Name it for the release
+        shell: pwsh
+        run: Copy-Item "target\release\${env:BINARY}.exe" "${env:BINARY}-windows-x86_64.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: ${{ env.BINARY }}-windows-x86_64.exe
+          if-no-files-found: error
+
+  linux:
+    name: Ubuntu (x86-64)
+    needs: test
+    # Built on the older release on purpose: a binary built against a newer
+    # glibc will not start on a distro that has an older one, and it never goes
+    # the other way.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System libraries
+        # The window and the file dialogs reach X11, Wayland and xkbcommon
+        # through `dlopen` at run time rather than linking them, so these are
+        # here for the build to be able to find headers if that ever changes.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libx11-dev libxkbcommon-dev libwayland-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: Build
+        run: cargo build --locked --release
+
+      - name: Check itself
+        run: ./target/release/$BINARY --self-check
+
+      - name: What it links
+        run: |
+          set -euo pipefail
+          ldd "target/release/$BINARY"
+          if ldd "target/release/$BINARY" | grep -q "not found"; then
+            echo "::error::a library this executable needs is not on the build machine either"
+            exit 1
+          fi
+
+      - name: Package it
+        # `cargo deb` reads `[package.metadata.deb]` in Cargo.toml, which is
+        # where the installed files and their permissions are written down.
+        run: |
+          set -euo pipefail
+          cargo install cargo-deb --locked
+          cargo deb --no-build
+          mv target/debian/*.deb "$BINARY-linux-x86_64.deb"
+          dpkg-deb --info "$BINARY-linux-x86_64.deb"
+          dpkg-deb --contents "$BINARY-linux-x86_64.deb"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: ${{ env.BINARY }}-linux-x86_64.deb
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: [macos, windows, linux]
+    # Only a tag publishes. A run started by hand has already done its job by
+    # leaving the three artifacts on the run for somebody to download.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloads
+          merge-multiple: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -l downloads
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Screenplay Creation Tool $GITHUB_REF_NAME" \
+            --generate-notes \
+            downloads/*
