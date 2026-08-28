@@ -1,0 +1,11 @@
+# One line ending in the repository and in every working tree.
+#
+# Git on Windows checks text files out as CRLF by default. Two of the files
+# here are compiled into the binary with `include_str!` — the sample screenplay
+# and the English language file — so a CRLF checkout produced a Windows build
+# that embedded different bytes from the macOS and Linux ones, and behaved
+# differently for it. `--self-check` caught it; this is what stops it.
+* text=auto eol=lf
+
+# The font is bytes, not text, and must never be touched.
+*.ttf binary
