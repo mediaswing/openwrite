@@ -53,8 +53,15 @@ menu.edit = "Edit"
 menu.story = "Story"
 menu.view = "View"
 menu.navigate = "Navigate"
+menu.audio_drama = "Audio Drama"
 menu.help = "Help"
 menu.language = "Language…"
+# The Audio Drama menu. These say "story" where the File menu says nothing,
+# because both menus are open at once and "Save" twice over would be a guess.
+menu.drama.screenplay = "Back to the screenplay"
+menu.drama.save = "Save story"
+menu.drama.save_as = "Save story as…"
+menu.drama.record = "Record…"
 # The document name at the right-hand end of the menu bar, when it has unsaved
 # changes.
 menu.edited = "{name} • edited"
@@ -63,6 +70,16 @@ view.colour_scheme = "Colour scheme"
 scheme.system = "Match system"
 scheme.light = "Light"
 scheme.dark = "Dark"
+
+
+# ---------------------------------------------------------------- the workspaces
+#
+# The two things the window can be showing. "Audio Drama" is the name of a kind
+# of programme, so translate it the way that kind of programme is named where
+# you are — radio play, hörspiel, radiodramma.
+
+workspace.screenplay = "Screenplay"
+workspace.audio_drama = "Audio Drama"
 
 
 # ------------------------------------------------------------------ the panes
@@ -131,6 +148,10 @@ status.save_cancelled = "Save cancelled"
 status.open_cancelled = "Open cancelled"
 status.export_cancelled = "Export cancelled"
 status.unsaved = "This screenplay has unsaved changes."
+# The same, when the unsaved work is the audio drama's cast rather than the
+# script — or both at once.
+status.unsaved.drama = "This audio drama has unsaved changes."
+status.unsaved.both = "The screenplay and the audio drama both have unsaved changes."
 status.cancelled = "Cancelled"
 
 status.scene = "Scene {index} of {total}, page {page}. {heading}"
@@ -202,6 +223,7 @@ shortcut.copy_formatted = "Copy the formatted script to the clipboard"
 shortcut.close = "Close the window"
 shortcut.characters = "Characters and world"
 shortcut.assist = "Ideas from a local model"
+shortcut.audio_drama = "Audio drama"
 shortcut.find = "Find in the screenplay"
 shortcut.find_next = "Find next match"
 shortcut.find_previous = "Find previous match"
@@ -256,6 +278,8 @@ find.go = "Find"
 
 confirm.title = "Unsaved changes"
 confirm.body = "This screenplay has changes that have not been saved."
+confirm.body.drama = "This audio drama has voices or dialogue that have not been saved."
+confirm.body.both = "The screenplay and the audio drama both have changes that have not been saved."
 
 error.title = "Something went wrong"
 
@@ -400,6 +424,7 @@ status.inserted.other = "Inserted {n} lines into the screenplay"
 status.suggestion_copied = "Copied the suggestion to the clipboard"
 status.suggestion_cleared = "Cleared the suggestion"
 status.opened_page = "Opened {url}"
+status.tab = "{name}"
 status.no_model_feature = "This build was made without the local model feature."
 
 
@@ -510,6 +535,187 @@ a11y.which_character = "Which character"
 a11y.which_model = "Which model"
 a11y.suggest = "Suggest. {ask}"
 a11y.log = "Debug log: {summary}"
+a11y.drama_line = "Line {index}. {who}, {treatment}. {text}"
+
+
+# ------------------------------------------------------------- the audio drama
+#
+# The tab that reads a story file aloud with ElevenLabs voices and mixes the
+# result. A few of the words here are worth knowing before you translate them:
+#
+#   state      how a line is spoken — the `state="scared"` in the story file.
+#              These are the names of ways of speaking, not of moods, so
+#              choose the word your language would put in a stage direction.
+#   semitone   the musical step. {semitones} arrives already signed, as "+4.0",
+#              so do not add a plus or a minus of your own.
+#   voice id   ElevenLabs' own identifier for a voice. Not translated: it is a
+#              code that gets pasted, like a serial number.
+
+drama.heading = "Audio drama"
+drama.no_story = "no story open"
+drama.file.edited = "{name} • edited"
+drama.file.untitled = "audio drama"
+drama.open = "Open story…"
+drama.open.hint = "Opens an audio drama XML file: its cast, its dialogue, and how each line is said."
+drama.save_as = "Save as…"
+drama.filter.story = "Audio drama story"
+drama.filter.recording = "Recording"
+drama.dialog.open = "Open an audio drama"
+drama.dialog.save = "Save the audio drama"
+drama.dialog.record = "Where should the recording go?"
+drama.empty = "No story open."
+drama.empty.hint = "An audio drama is an XML file: a <voices> cast list and a <dialog> section, "
+                   "each line saying who speaks, how old they are, how they say it and where "
+                   "they stand. Open one to cast it."
+
+# -- the key
+#
+# This is a paid service and the key is what pays for it, so the words here
+# should be plain about that rather than reassuring.
+
+drama.key.heading = "ElevenLabs API key"
+drama.key.hint = "Paste your key"
+drama.key.describe = "The key ElevenLabs bills. It is kept in the settings file on this computer, "
+                     "unencrypted, so keep that file to yourself."
+drama.key.show = "Show"
+drama.key.remember = "Remember"
+drama.key.remember.hint = "Saves the key in the settings file on this computer. Anyone who can read "
+                          "that file can spend it."
+drama.key.get = "Get a key"
+drama.key.from_environment = "Using the key in {name}. Nothing is written to disk."
+drama.voices.fetch = "Fetch voices"
+drama.voices.again = "Fetch again"
+drama.voices.fetch.hint = "Asks ElevenLabs which voices this key can use. Costs nothing."
+drama.voices.fetching = "Asking ElevenLabs…"
+drama.voices.none = "No voices fetched yet"
+drama.voices.have.one = "{n} voice"
+drama.voices.have.other = "{n} voices"
+drama.trouble.hint = "What ElevenLabs said, in its own words."
+
+# -- the cast
+
+drama.cast.heading = "Cast"
+drama.cast.hint = "Who speaks, and which voice reads them. A character with no voice stops the "
+                  "recording before it starts."
+drama.cast.who = "Character"
+drama.cast.gender = "Gender"
+drama.cast.voice = "Voice"
+drama.cast.voice_id = "Voice id"
+drama.cast.voice_id.hint = "Or paste one"
+drama.cast.choose = "Choose a voice"
+drama.cast.elsewhere = "A voice not in this list"
+drama.cast.no_catalogue = "Fetch voices, or paste an id"
+drama.cast.filter = "Find a voice"
+drama.cast.filter.hint = "Name, gender, accent…"
+drama.cast.which = "Which voice reads {name}"
+drama.cast.which_id = "Voice id for {name}"
+
+# -- the lines, and what will be done to them
+
+drama.lines.heading = "Lines"
+drama.lines.age = "Age"
+drama.lines.treatment = "How it will sound"
+drama.lines.words = "Words"
+drama.phrase.lines.one = "{n} line"
+drama.phrase.lines.other = "{n} lines"
+drama.phrase.cast.one = "{n} character"
+drama.phrase.cast.other = "{n} characters"
+# The status bar, while the audio drama is on screen. It replaces the pages and
+# words of the screenplay, which are not what is being worked on.
+drama.summary = "{lines} · {cast}"
+drama.age_strength = "Age shift"
+drama.age_strength.hint = "How much of each line's age to apply. Nothing at 0%, the full shift at 100%."
+drama.age_strength.note = "An age on a line lifts or lowers the pitch. Turn this down if the voice you "
+                          "have cast already sounds the right age — otherwise the shift is applied on "
+                          "top of a voice that has already had it."
+
+# The phrases that say what is about to happen to a line. They are joined with
+# commas, so keep them short and lower case.
+drama.effect.none = "as recorded"
+drama.effect.pitch = "{semitones} semitones"
+drama.effect.faster = "{percent}% faster"
+drama.effect.slower = "{percent}% slower"
+drama.effect.tremble = "trembling"
+drama.effect.breath = "breathy"
+drama.effect.forced = "forced"
+drama.effect.quieter = "quieter"
+drama.effect.louder = "louder"
+
+# The ways of speaking, from the story file's state="…".
+drama.state.normal = "normal"
+drama.state.whisper = "whispered"
+drama.state.scared = "frightened"
+drama.state.shout = "shouted"
+drama.state.angry = "angry"
+drama.state.sad = "sad"
+drama.state.excited = "excited"
+drama.state.tired = "tired"
+
+# And where they stand, from pos="…".
+drama.pos.left = "left"
+drama.pos.centre = "centre"
+drama.pos.right = "right"
+
+# -- what was wrong with the file
+#
+# Every one of these is something the tool recovered from rather than refused,
+# so they should read as notes rather than as errors. {detail} is the offending
+# word out of the file itself.
+
+drama.problems.heading = "Notes on this file"
+drama.problems.hint = "Nothing here stopped the file being read. It is what was assumed instead."
+drama.problems.at = "Line {line}: {what}"
+drama.problem.state = "no idea what state=\"{detail}\" means, so it is read plainly"
+drama.problem.pos = "no idea where pos=\"{detail}\" is, so it is placed in the centre"
+drama.problem.speaker = "{detail} speaks but was not in the cast list, so they have been added to it"
+drama.problem.voice_in_tag = "the voice {detail} was inside the tag rather than between the tags; "
+                             "it has been read as the voice anyway"
+drama.problem.no_voices = "there was no <voices> section, so one has been made from whoever speaks"
+drama.problem.empty = "nothing for {detail} to say, so this line is left out"
+drama.problem.malformed = "<{detail}> never closed"
+drama.problem.model = "this version does not know model=\"{detail}\", and has read it as best it can"
+
+# -- recording
+
+drama.record = "Record"
+drama.record.hint = "Reads every line with ElevenLabs and mixes them into one file. One paid request "
+                    "per line, unless it was recorded before."
+drama.stop = "Stop"
+drama.reuse = "Reuse recorded lines"
+drama.reuse.hint = "Skips ElevenLabs for any line whose words, voice and state have not changed since "
+                   "the last recording. An age, a position or the age shift can all be changed for "
+                   "nothing."
+drama.keep_lines = "Keep each line"
+drama.keep_lines.hint = "Writes every line as its own file, in a folder beside the recording."
+drama.uncast = "No voice for {who}"
+drama.progress = "Line {index} of {total} — {who}"
+drama.result = "{name}, {length}, {lines}{reused}"
+drama.result.reused.one = ", {n} reused"
+drama.result.reused.other = ", {n} reused"
+drama.result.lines_in = "The individual lines are in {folder}."
+drama.show = "Show it"
+drama.stopped = "The recording stopped unexpectedly"
+drama.stopped.detail = "The worker did not report back. The debug log has the rest."
+
+# -- what the tab says it has done
+
+drama.status.opened = "Opened {name}: {lines}. {note}"
+drama.status.cast_added = "There was no cast list, so one has been made from whoever speaks."
+drama.status.saved = "Saved {name}, voices and all"
+drama.status.need_key = "Set an ElevenLabs API key first"
+drama.status.listing = "Asking ElevenLabs which voices this key can use…"
+drama.status.voices.one = "{n} voice available"
+drama.status.voices.other = "{n} voices available"
+drama.status.no_voices = "Could not fetch the voices"
+drama.status.key_saved = "API key saved on this computer"
+drama.status.uncast = "No voice has been chosen for {who}"
+drama.status.recording.one = "Recording {n} line…"
+drama.status.recording.other = "Recording {n} lines…"
+drama.status.recorded = "Recorded {name}, {length}"
+drama.status.not_recorded = "The recording did not finish"
+drama.status.record_cancelled = "Recording cancelled"
+drama.status.stopping = "Stopping after this line…"
+drama.status.shown = "Shown in the file manager"
 
 
 # ---------------------------------------------------------- the empty screenplay

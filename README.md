@@ -14,13 +14,17 @@ across a page break, scene headings that must not be stranded at the foot of a
 page, dual dialogue in two columns, scene numbers in both margins.
 
 It is a desktop application, built on a formatting engine that is a library in
-its own right — so what you read on screen is what comes out of the file.
+its own right — so what you read on screen is what comes out of the file. It
+also [reads a script aloud](#audio-drama): the **Audio Drama** menu turns a
+story file into a mixed radio play in ElevenLabs voices, pitched to the age on
+each line and treated to match how it is said.
 
 ## The application
 
 ```sh
 cargo run --release                          # start with an empty screenplay
 cargo run --release -- examples/sample.fountain
+cargo run --release -- examples/sample-drama.xml   # straight to the Audio Drama tab
 ```
 
 Three panes over one document: the scene outline on the left, the Fountain
@@ -157,6 +161,94 @@ on this machine the window says so in as many words, because that is the one
 case where an unpublished screenplay leaves the computer it was written on.
 
 Builds made with `--no-default-features` have none of this compiled in at all.
+
+### Audio drama
+
+The **Audio Drama** menu turns a story file into a radio play: every line read
+by an [ElevenLabs](https://elevenlabs.io) voice, pitched and treated to match
+what the line says about itself, placed in the stereo picture, and mixed into
+one `.wav`.
+
+A story is XML — a cast list and the dialogue:
+
+```xml
+<story model="1.0">
+    <voices>
+        <character id="1" name="ben" gender="male">VOICE_ID</character>
+        <character id="2" name="faith" gender="female">VOICE_ID</character>
+    </voices>
+    <dialog>
+        <character line="1" id="1" age="12" state="normal" pos="left">I don't remember how it happened</character>
+        <character line="2" id="2" age="15" state="whisper" pos="right">What?</character>
+    </dialog>
+</story>
+```
+
+Between the `<character>` tags in `<dialog>` is the line itself. The attributes
+say how it is said:
+
+| | |
+|---|---|
+| `age` | Shifts the pitch. A twelve-year-old does not sound like the adult whose voice was hired to play them. |
+| `state` | `normal`, `whisper`, `scared`, `shout`, `angry`, `sad`, `excited`, `tired`. |
+| `pos` | `left`, `centre`, `right`. |
+
+`<voices>` is where the ElevenLabs voice for each character goes. **If your file
+has not got one, the tab makes it** out of whoever speaks, offers you a voice
+for each of them, and **Save story** writes it back — so the casting is done
+once and kept in the file. The same is true of anybody who speaks but was left
+out of an existing cast list. `examples/sample-drama.xml` is a whole one to
+start from, and opening a `.xml` file — from the menu, or by double-clicking it
+— goes straight to the tab.
+
+**What is done to the audio.** All of it is arithmetic on samples, on your
+machine, with nothing installed:
+
+- **Age** moves the pitch without moving the duration — the line still takes as
+  long to say — by stretching the waveform in time and resampling it back.
+  Twelve is about four semitones up; eighty is a little down and a little
+  slower. The **Age shift** slider scales the lot, for when the voice you cast
+  already sounds the right age and you do not want it applied twice.
+- **`state="scared"`** is a tremble: a slow wobble in pitch and one in loudness,
+  which is what a frightened voice actually does. `whisper` thins the voice,
+  drops it, and lays breath over it shaped by the words. `shout` drives it until
+  it starts to break up. Each state also steers ElevenLabs itself — a frightened
+  line is generated with low stability and high style, a whispered one with the
+  opposite.
+- **`pos`** is a constant-power pan, so a voice does not get louder or quieter
+  for having moved across the room. Not panned all the way: a voice hard against
+  one ear sounds like a fault rather than like a room.
+
+The tab lists every line with what is about to happen to it — *"ben, 12, normal,
++4.0 semitones, 2% faster, left"* — before anything is sent, and reports
+anything odd about the file as notes rather than errors: an unknown `state` is
+read plainly, a missing `<voices>` section is built, and a voice id typed inside
+the tag rather than between the tags is taken anyway.
+
+**What it costs.** One paid ElevenLabs request per line. The raw recording of
+each line is kept beside the finished play, named after a fingerprint of the
+three things ElevenLabs was told — the voice, the state and the words — so a
+later run that finds all three unchanged reuses it. Changing an age, a `pos`, or
+the age slider and re-recording therefore **costs nothing at all**: none of those
+change what was said, only what is done to it afterwards. Naming a recording
+after what is in it also means it survives editing, so adding a line at the top
+of a scene does not re-bill you for every line underneath it. Recordings no line
+asks for any more are swept up at the end of a run.
+
+Your API key can go in the settings file, where the tab's **Remember** button
+puts it. That file is plain text: anyone who can read it can spend the key.
+Setting `OPENWRITE_ELEVENLABS_KEY` in the environment takes precedence over it
+and is never written to disk, which is the way to use a key without leaving it
+lying about. `OPENWRITE_ELEVENLABS_MODEL` chooses the voice model
+(`eleven_multilingual_v2` by default).
+
+Nothing is sent until you press **Record**, and a recording can be stopped
+between lines. HTTPS is `curl`, as it is for the update check — there is no TLS
+stack and no other dependency in any of this. Builds made with
+`--no-default-features` have none of it compiled in.
+
+Sound effects are not in this version. `model="1.2"` is read and its dialogue is
+spoken, but a story that expects footsteps will not get them.
 
 ### Accessibility
 
@@ -298,12 +390,14 @@ panic is written there too.
 | <kbd>⌘F</kbd> / <kbd>⌘G</kbd> / <kbd>⇧⌘G</kbd> | Find, find next, find previous |
 | <kbd>⌘K</kbd> | Characters and world |
 | <kbd>⌘I</kbd> | Ideas from a local model |
+| <kbd>⇧⌘A</kbd> | Audio drama |
 | <kbd>⌘1</kbd> / <kbd>⌘2</kbd> / <kbd>⌘3</kbd> | Focus the outline, the editor, the preview |
 | <kbd>F6</kbd> / <kbd>⇧F6</kbd> | Next / previous pane |
 | <kbd>⌘]</kbd> / <kbd>⌘[</kbd> | Next / previous scene |
 | <kbd>⇧⌘O</kbd> / <kbd>⇧⌘P</kbd> | Show or hide the outline / the preview |
 | <kbd>⇧⌘H</kbd> | High contrast on or off |
 | — | Language (**View → Language…**) |
+| — | Open, save and record an audio drama (**Audio Drama** menu) |
 | <kbd>⌘+</kbd> / <kbd>⌘-</kbd> / <kbd>⌘0</kbd> | Text size |
 | <kbd>F1</kbd> | Shortcuts and markup |
 | <kbd>⇧⌘L</kbd> | Debug log |
@@ -378,6 +472,16 @@ it is the one part of the program that opens a socket and a build that should
 not be able to is worth being able to make. The update check is a second feature
 (`update`) for the same reason; it shells out to `curl` rather than linking a TLS
 stack for one request a session.
+
+The audio drama is a third (`drama`), and has no dependencies either, which is
+less obvious than it sounds. Its HTTPS is `curl`, as the update check's is; the
+story format is read by a small XML reader in
+[`src/drama/story.rs`](src/drama/story.rs); and the pitch shifting, the tremble,
+the panning and the mixing in
+[`src/drama/audio.rs`](src/drama/audio.rs) are arithmetic on 16-bit samples,
+which is why it asks ElevenLabs for PCM rather than the MP3 it sends by default.
+It is the one part of the program that costs money, so it is also the one most
+worth being able to compile out.
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml),
 which runs the tests, has the binary it just built check itself over a sample

@@ -23,6 +23,10 @@ use std::process::ExitCode;
 /// next to the binary.
 const SAMPLE: &str = include_str!("../examples/sample.fountain");
 
+/// And the sample audio drama, for the same reason.
+#[cfg(feature = "drama")]
+const DRAMA: &str = include_str!("../examples/sample-drama.xml");
+
 pub fn run() -> ExitCode {
     let mut failures = Vec::new();
     let mut checked = 0;
@@ -205,6 +209,56 @@ pub fn run() -> ExitCode {
         }
     });
 
+    // The whole audio path, short of the one part that costs money: read a
+    // story, work out what each line asks for, do the arithmetic to some
+    // samples and write a `.wav`. Nothing here touches the network — the
+    // recording is made here rather than fetched — so this runs on a headless
+    // runner like everything else, and catches a build in which the pitch
+    // shifting or the mixing has stopped working before it is uploaded.
+    #[cfg(feature = "drama")]
+    check("the audio drama", {
+        use openwrite::drama::{audio, story};
+
+        let drama = story::parse(DRAMA);
+        let scared = drama.lines.iter().find(|line| line.state == story::State::Scared);
+        let Some(scared) = scared else {
+            return finish(checked, &failures, "the sample drama has no frightened line");
+        };
+
+        // Half a second of a buzz, standing in for a voice.
+        let samples: Vec<f32> = (0..audio::SAMPLE_RATE / 2)
+            .map(|i| {
+                let t = i as f32 / audio::SAMPLE_RATE as f32;
+                (std::f32::consts::TAU * 140.0 * t).sin() * 0.4
+            })
+            .collect();
+        let treatment = audio::Treatment::for_line(scared, 1.0);
+        let (left, right) = treatment.apply(&audio::Mono { samples }, 1);
+        let piece = audio::Piece { left, right, speaker: "ben".to_string() };
+        let mixed = audio::stitch(std::slice::from_ref(&piece));
+        let wav = audio::wav(&mixed, audio::SAMPLE_RATE, 2);
+
+        let lifted = treatment.semitones > 3.0;
+        let trembles = treatment.wobble > 0.0;
+        let panned = piece.left.iter().map(|s| s * s).sum::<f32>()
+            > piece.right.iter().map(|s| s * s).sum::<f32>() * 4.0;
+        let sound = wav.starts_with(b"RIFF") && wav.len() > 44 && mixed.iter().all(|s| s.is_finite());
+
+        if drama.lines.len() == 5 && lifted && trembles && panned && sound {
+            Ok(format!(
+                "{} lines, {:+.1} semitones and trembling, {} bytes of audio",
+                drama.lines.len(),
+                treatment.semitones,
+                wav.len()
+            ))
+        } else {
+            Err(format!(
+                "{} lines, lifted {lifted}, trembles {trembles}, panned {panned}, sound {sound}",
+                drama.lines.len()
+            ))
+        }
+    });
+
     check("statistics", {
         let stats = openwrite::stats::compute(&doc, &pages);
         if stats.scenes == 3 && stats.words > 100 && stats.characters.contains_key("MAYA") {
@@ -222,4 +276,15 @@ pub fn run() -> ExitCode {
         println!("{} of {checked} checks failed: {}", failures.len(), failures.join(", "));
         ExitCode::FAILURE
     }
+}
+
+/// Give up early, having already run some checks. Only reached when a sample
+/// compiled into the binary is not what it should be, which is a broken build
+/// rather than a failing check.
+#[cfg(feature = "drama")]
+fn finish(checked: usize, failures: &[String], why: &str) -> ExitCode {
+    println!("FAIL  {why}");
+    println!();
+    println!("{} of {checked} checks failed: {}", failures.len() + 1, failures.join(", "));
+    ExitCode::FAILURE
 }

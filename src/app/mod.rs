@@ -10,6 +10,8 @@ mod a11y;
 mod assistant;
 pub(crate) mod characters;
 mod debug_log;
+#[cfg(feature = "drama")]
+mod drama;
 mod language;
 pub(crate) mod shortcuts;
 mod theme;
@@ -113,6 +115,32 @@ impl Pane {
     }
 }
 
+/// Which of the two things this program does is on screen.
+///
+/// A screenplay and a radio play are made of the same words but worked on
+/// completely differently — one is three panes over a document, the other is a
+/// cast list and a render queue — so they are two workspaces rather than one
+/// workspace with a lot of it hidden. Which one is showing is not a setting
+/// and not a tab: it follows from the menu somebody used, the same way the
+/// characters window follows from the Story menu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Workspace {
+    Screenplay,
+    #[cfg(feature = "drama")]
+    AudioDrama,
+}
+
+impl Workspace {
+    /// What it is called, for the status line.
+    fn label(self) -> String {
+        match self {
+            Workspace::Screenplay => t!("workspace.screenplay"),
+            #[cfg(feature = "drama")]
+            Workspace::AudioDrama => t!("workspace.audio_drama"),
+        }
+    }
+}
+
 /// Which colour scheme the user asked for. The palettes themselves live in
 /// [`theme`]; this only chooses between them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,6 +232,11 @@ pub struct App {
     #[cfg(feature = "ai")]
     show_assistant: bool,
 
+    /// Which tab is on screen.
+    workspace: Workspace,
+    #[cfg(feature = "drama")]
+    drama: drama::Drama,
+
     show_outline: bool,
     show_preview: bool,
     show_help: bool,
@@ -267,6 +300,9 @@ impl App {
             assistant: assistant::Assistant::default(),
             #[cfg(feature = "ai")]
             show_assistant: false,
+            workspace: Workspace::Screenplay,
+            #[cfg(feature = "drama")]
+            drama: drama::Drama::default(),
             show_outline: true,
             show_preview: true,
             show_help: false,
@@ -290,6 +326,14 @@ impl App {
         };
 
         match path {
+            // A story file opens the tab that can do something with it,
+            // rather than opening as a screenplay full of angle brackets.
+            #[cfg(feature = "drama")]
+            Some(path) if crate::drama::is_story(&path) => {
+                app.source = welcome();
+                app.workspace = Workspace::AudioDrama;
+                app.open_drama(&path);
+            }
             Some(path) => app.load(&path),
             None => {
                 app.source = welcome();
@@ -607,6 +651,37 @@ impl App {
                 }
             }
             Action::Assist => self.toggle_assistant(ctx),
+            #[cfg(feature = "drama")]
+            Action::AudioDrama => self.show_workspace(Workspace::AudioDrama),
+            #[cfg(feature = "drama")]
+            Action::Screenplay => self.show_workspace(Workspace::Screenplay),
+            // Each of these shows the tab as well as doing the thing, because
+            // every one of them changes something on it, and doing that out of
+            // sight would be the surprise.
+            #[cfg(feature = "drama")]
+            Action::DramaOpen => {
+                self.show_workspace(Workspace::AudioDrama);
+                self.open_drama_dialog();
+            }
+            #[cfg(feature = "drama")]
+            Action::DramaSave => {
+                self.show_workspace(Workspace::AudioDrama);
+                if let Some(path) = self.drama.path.clone() {
+                    self.save_drama_to(path);
+                }
+            }
+            #[cfg(feature = "drama")]
+            Action::DramaSaveAs => {
+                self.show_workspace(Workspace::AudioDrama);
+                self.save_drama_as();
+            }
+            #[cfg(feature = "drama")]
+            Action::DramaRecord => {
+                self.show_workspace(Workspace::AudioDrama);
+                self.start_recording(ctx);
+            }
+            #[cfg(feature = "drama")]
+            Action::DramaStop => self.stop_recording(),
             Action::DebugLog => self.open_debug_log(),
             Action::Language => self.open_language(),
             Action::ToggleOutline => {
@@ -651,11 +726,67 @@ impl App {
 
     /// Run an action, or ask about unsaved work first.
     fn guarded(&mut self, pending: Pending) {
-        if self.dirty {
+        if self.unsaved() {
             self.confirm = Some(pending);
-            self.announce(t!("status.unsaved"));
+            let message = self.unsaved_status();
+            self.announce(message);
         } else {
             self.commit(pending);
+        }
+    }
+
+    /// Are there unsaved changes in *either* document?
+    ///
+    /// Both, because both are work. Casting a play is half an hour of choosing
+    /// voices, and it is kept in the story file rather than in the screenplay,
+    /// so a guard that only asked about the screenplay would let all of it go
+    /// on the way out of the door without a word.
+    fn unsaved(&self) -> bool {
+        self.dirty || self.drama_unsaved()
+    }
+
+    fn drama_unsaved(&self) -> bool {
+        #[cfg(feature = "drama")]
+        {
+            self.drama.edited
+        }
+        #[cfg(not(feature = "drama"))]
+        {
+            false
+        }
+    }
+
+    /// Which document the warning is about. Said in as many words rather than
+    /// left as "unsaved changes", because the answer decides which file
+    /// somebody is about to lose.
+    fn unsaved_status(&self) -> String {
+        match (self.dirty, self.drama_unsaved()) {
+            (true, true) => t!("status.unsaved.both"),
+            (false, true) => t!("status.unsaved.drama"),
+            _ => t!("status.unsaved"),
+        }
+    }
+
+    fn unsaved_body(&self) -> String {
+        match (self.dirty, self.drama_unsaved()) {
+            (true, true) => t!("confirm.body.both"),
+            (false, true) => t!("confirm.body.drama"),
+            _ => t!("confirm.body"),
+        }
+    }
+
+    /// Save whatever has not been saved, asking where only if it has never had
+    /// a name.
+    fn save_unsaved(&mut self) {
+        if self.dirty {
+            self.save();
+        }
+        #[cfg(feature = "drama")]
+        if self.drama.edited {
+            match self.drama.path.clone() {
+                Some(path) => self.save_drama_to(path),
+                None => self.save_drama_as(),
+            }
         }
     }
 
@@ -890,6 +1021,42 @@ impl App {
                     if cfg!(feature = "ai") && self.menu_item(ui, Action::Assist) {
                         chosen = Some(Action::Assist);
                     }
+                    #[cfg(feature = "drama")]
+                    if self.menu_item(ui, Action::AudioDrama) {
+                        chosen = Some(Action::AudioDrama);
+                    }
+                });
+                // Its own menu rather than a corner of Story, because it is a
+                // second thing to do with a script rather than another note
+                // about one — and because it has commands of its own that want
+                // somewhere to live.
+                #[cfg(feature = "drama")]
+                ui.menu_button(t!("menu.audio_drama"), |ui| {
+                    if self.menu_item(ui, Action::AudioDrama) {
+                        chosen = Some(Action::AudioDrama);
+                    }
+                    if self.plain_item(ui, t!("menu.drama.screenplay"), true) {
+                        chosen = Some(Action::Screenplay);
+                    }
+                    ui.separator();
+                    if self.plain_item(ui, t!("drama.open"), true) {
+                        chosen = Some(Action::DramaOpen);
+                    }
+                    let opened = self.drama.path.is_some() && !self.drama.story.is_empty();
+                    if self.plain_item(ui, t!("menu.drama.save"), opened) {
+                        chosen = Some(Action::DramaSave);
+                    }
+                    if self.plain_item(ui, t!("menu.drama.save_as"), !self.drama.story.is_empty())
+                    {
+                        chosen = Some(Action::DramaSaveAs);
+                    }
+                    ui.separator();
+                    if self.plain_item(ui, t!("menu.drama.record"), self.drama.can_record()) {
+                        chosen = Some(Action::DramaRecord);
+                    }
+                    if self.plain_item(ui, t!("drama.stop"), self.drama.is_recording()) {
+                        chosen = Some(Action::DramaStop);
+                    }
                 });
                 ui.menu_button(t!("menu.view"), |ui| {
                     for action in [
@@ -943,13 +1110,28 @@ impl App {
                 });
 
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    let title = self
-                        .path
-                        .as_deref()
-                        .map(file_label)
-                        .unwrap_or_else(|| t!("file.untitled"));
+                    // Whichever document the window is showing, and whether it
+                    // has unsaved changes.
+                    let (title, edited) = match self.workspace {
+                        Workspace::Screenplay => (
+                            self.path
+                                .as_deref()
+                                .map(file_label)
+                                .unwrap_or_else(|| t!("file.untitled")),
+                            self.dirty,
+                        ),
+                        #[cfg(feature = "drama")]
+                        Workspace::AudioDrama => (
+                            self.drama
+                                .path
+                                .as_deref()
+                                .map(file_label)
+                                .unwrap_or_else(|| t!("drama.file.untitled")),
+                            self.drama.edited,
+                        ),
+                    };
                     let palette = theme::palette(ui.visuals());
-                    if self.dirty {
+                    if edited {
                         ui.label(
                             RichText::new(t!("menu.edited", name = title)).color(palette.warn),
                         );
@@ -960,6 +1142,34 @@ impl App {
             });
         });
         chosen
+    }
+
+    /// Switch tab, and say so.
+    fn show_workspace(&mut self, workspace: Workspace) {
+        if self.workspace == workspace {
+            return;
+        }
+        self.workspace = workspace;
+        self.announce(t!("status.tab", name = workspace.label()));
+        if workspace == Workspace::Screenplay {
+            self.focus_request = Some(Pane::Editor);
+        }
+    }
+
+    /// A menu entry that has no shortcut, and may be unavailable.
+    ///
+    /// [`Self::menu_item`] takes its words from the shortcut table, which is
+    /// what keeps the menus and the help window from drifting apart. These
+    /// have no key of their own — the ones they would want are all spoken for —
+    /// so they carry their own words, as the language entry in the View menu
+    /// already does.
+    fn plain_item(&self, ui: &mut Ui, label: String, enabled: bool) -> bool {
+        let response = ui.add_enabled(enabled, egui::Button::new(label));
+        if response.clicked() {
+            ui.close();
+            return true;
+        }
+        false
     }
 
     fn menu_item(&self, ui: &mut Ui, action: Action) -> bool {
@@ -979,12 +1189,22 @@ impl App {
     fn status_bar(&mut self, ui: &mut Ui) {
         egui::Panel::bottom(Id::new("openwrite-status")).show(ui, |ui| {
             ui.horizontal(|ui| {
-                let summary = t!(
-                    "status.summary",
-                    pages = a11y::pages_phrase(self.script_pages()),
-                    scenes = tn!("phrase.scenes", self.stats.scenes),
-                    words = tn!("phrase.words", self.stats.words)
-                );
+                // Counting pages while the audio drama is on screen would be
+                // counting the wrong document.
+                let summary = match self.workspace {
+                    Workspace::Screenplay => t!(
+                        "status.summary",
+                        pages = a11y::pages_phrase(self.script_pages()),
+                        scenes = tn!("phrase.scenes", self.stats.scenes),
+                        words = tn!("phrase.words", self.stats.words)
+                    ),
+                    #[cfg(feature = "drama")]
+                    Workspace::AudioDrama => t!(
+                        "drama.summary",
+                        lines = tn!("drama.phrase.lines", self.drama.story.lines.len()),
+                        cast = tn!("drama.phrase.cast", self.drama.story.voices.len())
+                    ),
+                };
                 let response = ui.label(RichText::new(&summary).monospace());
                 a11y::name(&response, t!("a11y.summary", summary = summary));
 
@@ -1319,7 +1539,7 @@ impl App {
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
-                ui.label(t!("confirm.body"));
+                ui.label(self.unsaved_body());
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
                     if ui.button(t!("button.save")).clicked() {
@@ -1338,13 +1558,20 @@ impl App {
         }
         match decision {
             Some(Decision::Save) => {
-                self.save();
-                if !self.dirty {
+                self.save_unsaved();
+                // Only go on if it worked: a cancelled Save-as leaves the work
+                // exactly where it was, and closing anyway would throw away
+                // what was just being rescued.
+                if !self.unsaved() {
                     self.commit(pending);
                 }
             }
             Some(Decision::Discard) => {
                 self.dirty = false;
+                #[cfg(feature = "drama")]
+                {
+                    self.drama.edited = false;
+                }
                 self.commit(pending);
             }
             Some(Decision::Cancel) => {
@@ -1390,6 +1617,11 @@ impl App {
         }
         #[cfg(feature = "ai")]
         if self.show_assistant {
+            return;
+        }
+        // The other workspace has no panes to walk, and its own fields would
+        // otherwise eat the arrow keys.
+        if self.workspace != Workspace::Screenplay {
             return;
         }
         let focused = ctx.memory(|m| m.focused());
@@ -1455,7 +1687,8 @@ impl eframe::App for App {
         // The window's own close button has to go through the unsaved-changes
         // question too, or the one route out of the app that needs no keyboard
         // is also the one that loses work.
-        if ctx.input(|i| i.viewport().close_requested()) && self.dirty && self.confirm.is_none() {
+        if ctx.input(|i| i.viewport().close_requested()) && self.unsaved() && self.confirm.is_none()
+        {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.guarded(Pending::Close);
         }
@@ -1464,13 +1697,19 @@ impl eframe::App for App {
             self.perform(action, &ctx);
         }
         self.status_bar(ui);
-        if self.show_outline {
-            self.outline_panel(ui);
+        match self.workspace {
+            Workspace::Screenplay => {
+                if self.show_outline {
+                    self.outline_panel(ui);
+                }
+                if self.show_preview {
+                    self.preview_panel(ui);
+                }
+                self.editor_panel(ui);
+            }
+            #[cfg(feature = "drama")]
+            Workspace::AudioDrama => self.drama_panel(ui, &ctx),
         }
-        if self.show_preview {
-            self.preview_panel(ui);
-        }
-        self.editor_panel(ui);
         self.dialogs(&ctx);
 
         if self.place_caret {
@@ -1482,11 +1721,25 @@ impl eframe::App for App {
 
         // The program's own name is not translated — it is a name — but
         // everything around it is.
-        let name = match &self.path {
-            Some(path) => file_label(path),
-            None => t!("file.untitled"),
+        let name = match self.workspace {
+            Workspace::Screenplay => match &self.path {
+                Some(path) => file_label(path),
+                None => t!("file.untitled"),
+            },
+            // The window is showing the story file, so that is the document it
+            // should be named after.
+            #[cfg(feature = "drama")]
+            Workspace::AudioDrama => match &self.drama.path {
+                Some(path) => file_label(path),
+                None => t!("drama.file.untitled"),
+            },
         };
-        let title = if self.dirty {
+        let edited = match self.workspace {
+            Workspace::Screenplay => self.dirty,
+            #[cfg(feature = "drama")]
+            Workspace::AudioDrama => self.drama.edited,
+        };
+        let title = if edited {
             t!("window.title.edited", name = name, app = APP_NAME)
         } else {
             t!("window.title", name = name, app = APP_NAME)

@@ -10,7 +10,7 @@ keywords = ["screenplay", "fountain", "screenwriting", "formatter"]
 categories = ["gui", "text-processing"]
 
 [features]
-default = ["gui", "ai", "update"]
+default = ["gui", "ai", "drama", "update"]
 # The window. `--no-default-features` leaves it out, which builds the
 # formatting engine as a dependency-free library and a binary that does nothing
 # but `--help`, `--version` and `--self-check`.
@@ -19,6 +19,12 @@ gui = ["dep:eframe", "dep:rfd"]
 # lines of HTTP and JSON over `std::net` — but it is the one part of the program
 # that opens a socket, so it can be compiled out entirely.
 ai = []
+# Turning a story file into a recording with ElevenLabs voices. The second
+# thing here that leaves the machine, and the only one that costs money, so it
+# is a feature like the rest: `--no-default-features --features gui` builds an
+# editor that cannot make a sound. No dependencies of its own — HTTPS is
+# `curl`, and the pitch shifting and mixing are arithmetic on samples.
+drama = []
 # Asking GitHub, once at startup, whether there is a newer release. The other
 # thing this program does over the network, and the only one it does without
 # being asked — so it is a feature, and `OPENWRITE_NO_UPDATE_CHECK` turns it off
@@ -56,4 +62,6 @@ assets = [
     ["assets/lang/en.toml", "usr/share/doc/openwrite/en.toml", "644"],
     ["assets/fonts/UBUNTU-FONT-LICENCE-1.0.txt", "usr/share/doc/openwrite/UBUNTU-FONT-LICENCE-1.0.txt", "644"],
     ["examples/sample.fountain", "usr/share/doc/openwrite/examples/sample.fountain", "644"],
+    # The audio drama format, with every attribute explained in a comment.
+    ["examples/sample-drama.xml", "usr/share/doc/openwrite/examples/sample-drama.xml", "644"],
 ]

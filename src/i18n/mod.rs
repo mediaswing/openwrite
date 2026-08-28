@@ -625,6 +625,19 @@ mod tests {
                 plain.insert(field.hint.to_string());
             }
         }
+        #[cfg(feature = "drama")]
+        {
+            use crate::drama::story::{Kind, Pos, State};
+            for state in State::ALL {
+                plain.insert(state.key().to_string());
+            }
+            for pos in Pos::ALL {
+                plain.insert(pos.key().to_string());
+            }
+            for kind in Kind::ALL {
+                plain.insert(kind.key().to_string());
+            }
+        }
         (plain, counted)
     }
 

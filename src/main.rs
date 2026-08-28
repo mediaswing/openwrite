@@ -16,7 +16,8 @@
 
 //! The application.
 //!
-//! It opens a window. The only arguments it takes are the screenplay to open —
+//! It opens a window. The only arguments it takes are the screenplay or audio
+//! drama to open —
 //! which is what Finder and Explorer pass when somebody double-clicks a
 //! document — and the two conventions every executable is expected to answer,
 //! plus `--self-check`, which is there for the release build rather than for
@@ -40,7 +41,8 @@ USAGE
   screenplay-creation-tool [FILE]
 
   FILE is a .sct document or a .fountain screenplay to open. With no
-  argument the editor starts on an empty screenplay.
+  argument the editor starts on an empty screenplay. An .xml audio drama
+  opens in the Audio Drama tab instead.
 
   Screenplays are written in Fountain, plus a one-line way to write a
   speech that is this tool's own -- MAYA: Forty-one. -- and is expanded
@@ -58,6 +60,14 @@ ENVIRONMENT
   OPENWRITE_AI_URL    Where to look for a local model server.
                       Default http://127.0.0.1:11434, which is Ollama.
   OPENWRITE_AI_MODEL  Which model to use, if the server has more than one.
+  OPENWRITE_ELEVENLABS_KEY
+                      The API key for the Audio Drama tab. Takes precedence
+                      over the one in the settings file, and is never written
+                      to disk -- which is the way to use one without leaving
+                      it lying about.
+  OPENWRITE_ELEVENLABS_MODEL
+                      Which ElevenLabs voice model to use.
+                      Default eleven_multilingual_v2.
   OPENWRITE_NO_UPDATE_CHECK
                       Set to stop the editor asking GitHub, once at startup,
                       whether there is a newer release.
@@ -67,8 +77,9 @@ ENVIRONMENT
 
   None of these is needed to write a screenplay. The editor asks GitHub for
   the latest version once at startup and nothing else goes out unasked: a
-  model is only ever sent what you ask it about, and the debug log stays in
-  memory unless you name a file for it.
+  model is only ever sent what you ask it about, an audio drama is only sent
+  to ElevenLabs when you press Record, and the debug log stays in memory
+  unless you name a file for it.
 ";
 
 fn main() -> ExitCode {

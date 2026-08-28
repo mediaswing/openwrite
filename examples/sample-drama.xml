@@ -1,0 +1,30 @@
+<story model="1.0">
+    <!--
+        An audio drama, as the Audio Drama tab reads it.
+
+        <voices> is the cast: one entry per person, and between the tags the
+        ElevenLabs voice id that reads them. Leave a voice empty and the tab
+        will offer you a list to choose from; a file with no <voices> section
+        at all gets one made from whoever speaks.
+
+        In <dialog>, each line says who speaks it and how:
+
+            age     shifts the pitch, because a twelve-year-old does not sound
+                    like the adult whose voice was hired to play them
+            state   how it is said: normal, whisper, scared, shout, angry,
+                    sad, excited, tired
+            pos     where they stand: left, centre, right
+    -->
+    <voices>
+        <character id="1" name="ben" gender="male"></character>
+        <character id="2" name="faith" gender="female"></character>
+        <character id="3" name="the guildsman" gender="male"></character>
+    </voices>
+    <dialog>
+        <character line="1" id="1" age="12" state="normal" pos="left">I don't remember how it happened</character>
+        <character line="2" id="2" age="15" state="whisper" pos="right">What?</character>
+        <character line="3" id="1" age="12" state="scared" pos="left">I said I don't remember. Stop asking me.</character>
+        <character line="4" id="3" age="58" state="normal" pos="centre">Then we shall have to ask you somewhere quieter.</character>
+        <character line="5" id="2" age="15" state="shout" pos="right">Don't you touch him!</character>
+    </dialog>
+</story>

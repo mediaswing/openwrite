@@ -21,9 +21,9 @@
 //! TLS library for one request a session would be a hundred crates for a
 //! version number.
 //!
-//! So this shells out to `curl`, which ships with macOS and with Windows 10
-//! and later, and is on any Linux worth the name. If it is missing the check
-//! fails, which is a thing this module already has to handle gracefully.
+//! So this shells out to `curl` — see [`crate::curl`] for where it is found.
+//! If it is missing the check fails, which is a thing this module already has
+//! to handle gracefully.
 
 use crate::json;
 use crate::log;
@@ -177,7 +177,7 @@ fn latest(body: &str) -> Result<Release, Error> {
 }
 
 fn fetch(url: &str) -> Result<String, Error> {
-    let output = Command::new(curl())
+    let output = Command::new(crate::curl::path())
         .args([
             "--silent",
             "--show-error",
@@ -216,27 +216,6 @@ fn fetch(url: &str) -> Result<String, Error> {
         return Err(Error::Reply("an empty reply".to_string()));
     }
     Ok(body)
-}
-
-/// Where `curl` is.
-///
-/// Named by its full path on Windows, where the search order for a bare name
-/// starts with the folder the program was launched from and the working
-/// directory: a `curl.exe` in a folder somebody downloaded a screenplay into
-/// would otherwise be run in preference to the real one. Everywhere else the
-/// name is right, because `PATH` is the whole of the search.
-fn curl() -> std::ffi::OsString {
-    #[cfg(target_os = "windows")]
-    {
-        let root = std::env::var_os("SystemRoot")
-            .unwrap_or_else(|| std::ffi::OsString::from(r"C:\Windows"));
-        let mut path = std::path::PathBuf::from(root);
-        path.push("System32");
-        path.push("curl.exe");
-        return path.into_os_string();
-    }
-    #[cfg(not(target_os = "windows"))]
-    std::ffi::OsString::from("curl")
 }
 
 #[cfg(test)]

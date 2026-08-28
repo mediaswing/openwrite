@@ -41,7 +41,10 @@ pub mod ai;
 pub mod app;
 pub mod bible;
 pub mod browser;
+pub mod curl;
 pub mod document;
+#[cfg(feature = "drama")]
+pub mod drama;
 pub mod element;
 pub mod i18n;
 pub mod inline;

@@ -35,6 +35,25 @@ pub enum Action {
     Characters,
     /// Ask a local model what happens next.
     Assist,
+    /// Show the audio drama.
+    #[cfg(feature = "drama")]
+    AudioDrama,
+    /// Go back to the screenplay.
+    #[cfg(feature = "drama")]
+    Screenplay,
+    // The rest of the Audio Drama menu. No shortcuts: the keys they would want
+    // are all spoken for, and a command reached once a session does not need
+    // one. See `App::plain_item`.
+    #[cfg(feature = "drama")]
+    DramaOpen,
+    #[cfg(feature = "drama")]
+    DramaSave,
+    #[cfg(feature = "drama")]
+    DramaSaveAs,
+    #[cfg(feature = "drama")]
+    DramaRecord,
+    #[cfg(feature = "drama")]
+    DramaStop,
     ToggleOutline,
     TogglePreview,
     ToggleContrast,
@@ -99,6 +118,10 @@ pub fn bindings() -> Vec<Binding> {
         // in a build that has it.
         #[cfg(feature = "ai")]
         Binding { action: Assist, shortcut: key(CMD, Key::I), group: "group.story", description: "shortcut.assist" },
+        // Likewise: the audio drama is not there in a build without it, so
+        // neither is the key that shows it.
+        #[cfg(feature = "drama")]
+        Binding { action: AudioDrama, shortcut: key(CMD_SHIFT, Key::A), group: "group.story", description: "shortcut.audio_drama" },
 
         Binding { action: Find, shortcut: key(CMD, Key::F), group: "group.edit", description: "shortcut.find" },
         Binding { action: FindNext, shortcut: key(CMD, Key::G), group: "group.edit", description: "shortcut.find_next" },
