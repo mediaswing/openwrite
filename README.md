@@ -66,6 +66,47 @@ Save as `.fountain` instead and you get ordinary Fountain with no header, for
 handing to another tool. That drops the notes as well as the caret, and the
 tool says so when it does it.
 
+### If the editor stops
+
+While there is unsaved work the editor keeps a **copy of it beside the
+settings**, rewritten every twenty seconds and taken away the moment the work is
+saved. If the editor stops before it can take the copy away — a crash, a power
+cut, a laptop that went to sleep and never woke — the next start offers the work
+back.
+
+Your own file is never written to. This is deliberately not auto-save, for three
+reasons that all point the same way:
+
+- Saving as `.fountain` has nowhere to put your notes, so a timer doing it would
+  quietly throw the story bible away every twenty seconds.
+- *Close without saving* is a real thing to want after a bad hour, and an
+  auto-save takes it away.
+- The draft most likely to be lost is the one that has never been saved at all,
+  and that has no file to be written over.
+
+So the copy is always a full `.sct` document whatever your own file is, which
+means the notes, the caret and the outline all survive a crash even for a draft
+you are keeping as plain Fountain. It is written owner-only, and written under a
+temporary name and renamed into place, so an interruption during the write
+cannot leave half a draft where a whole one was.
+
+| Platform | Folder |
+| --- | --- |
+| macOS | `~/Library/Application Support/openwrite/recovery` |
+| Windows | `%APPDATA%\openwrite\recovery` |
+| Linux | `~/.config/openwrite/recovery` |
+
+The question it asks takes three answers. **Restore** puts the work back in the
+editor, still unsaved and still not written to the file it came from — save it
+yourself when you have looked at it. **Discard** throws the copy away.
+<kbd>Esc</kbd> and the window's close button mean neither: they mean *not now*,
+so the copy stays and you are asked again next time. Losing a draft should take
+more than dismissing a window.
+
+Nothing is announced while this works. The status bar is read aloud by a screen
+reader, so an editor that reported a save every twenty seconds would be
+unusable with one; the copies go to the debug log and nowhere else.
+
 ### Typing dialogue quickly
 
 Fountain writes a speech over three lines. This tool understands a one-line form
@@ -304,6 +345,12 @@ painted pixels. On top of that:
 - **Text scaling** from 70% to 300% (<kbd>⌘+</kbd> / <kbd>⌘-</kbd> / <kbd>⌘0</kbd>).
 - **Colour never carries meaning alone.** A status message says what happened in
   words; the colour only agrees with it.
+- **The HTML export carries all of this with it**, including into other
+  languages — see [Output formats](#output-formats). It is the copy that goes to
+  a producer or an actor, so it is the one that most needs to be readable.
+- **Nothing interrupts you to say it saved.** The status bar is a live region,
+  so the copy kept of unsaved work is silent by design — see
+  [If the editor stops](#if-the-editor-stops).
 
 ### Language
 
@@ -375,9 +422,14 @@ and dismissing it dismisses it.
 
 This is the one thing the program does over the network without being asked, so:
 it fetches one small JSON document from `api.github.com`, sends nothing about
-you beyond a `User-Agent` of `openwrite`, records the check in the debug log, and
-stops entirely if `OPENWRITE_NO_UPDATE_CHECK` is set. Builds made without the
-`update` feature never ask at all.
+you beyond a `User-Agent` of `openwrite`, and records the check in the debug log.
+
+Refusing it should not depend on knowing that an environment variable exists, so
+**Keep checking for new versions** is a switch in two places: the window that
+does the asking, and the language window, which is where you can find it again
+once the first one has been turned off. It is remembered between runs. Setting
+`OPENWRITE_NO_UPDATE_CHECK` stops the check whatever the switch says, and builds
+made without the `update` feature never ask at all.
 
 ### The debug log
 
@@ -433,9 +485,19 @@ panic is written there too.
 
 The HTML export is a printable, screen-reader-friendly document in its own
 right: scene headings are real headings, each scene is a labelled landmark,
-there is a skip link and a scene navigation list, `j`/`k`/`n`/`p` move between
-scenes, and the print stylesheet sets US Letter with correct margins. Print it
-to PDF for a submission-ready script.
+there is a skip link and a scene navigation list, and the print stylesheet sets
+US Letter with correct margins. Print it to PDF for a submission-ready script.
+
+Inside the screenplay, `j`/`k`/`n`/`p` move between scenes and `?` lists the
+keys. They are live only once the screenplay itself has focus — reach it with
+the skip link, by clicking into it, or from the contents list — because single
+letters bound to the whole page fire while somebody is dictating into speech
+recognition software.
+
+The page also says which language it is in, and its landmarks are in that
+language rather than always in English. That is the interface language, or a
+`Language:` line on the title page if your screenplay has one: a French script
+should be read aloud in a French voice.
 
 ## Output formats
 
