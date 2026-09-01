@@ -275,3 +275,123 @@ fn statistics_count_what_a_writer_would_count() {
     assert_eq!(stats.characters["MAYA"].cues, 1);
     assert_eq!(stats.characters["MAYA"].words, 2);
 }
+
+/// The exported page says which language it is in, so that a screen reader
+/// pronounces it rather than sounding it out with English rules.
+#[test]
+fn the_exported_page_declares_its_language() {
+    let opts = Options::default();
+
+    // With nothing said, it is the language the editor is being used in.
+    let doc = openwrite::parse("INT. KITCHEN - DAY\n\nShe waits.\n");
+    let expected = format!(r#"<html lang="{}">"#, openwrite::i18n::current_code());
+    assert!(render::html::render(&doc, &opts).contains(&expected));
+
+    // A `Language:` line on the title page wins, for a script written in one
+    // language by somebody whose editor is in another.
+    let doc = openwrite::parse("Title: Le Sel\nLanguage: fr-CA\n\nINT. KITCHEN - DAY\n\nElle attend.\n");
+    assert!(render::html::render(&doc, &opts).contains(r#"<html lang="fr-CA">"#));
+
+    // Anything that is not a language tag is not put in the attribute: a title
+    // page is a place somebody can type anything at all.
+    for bad in ["Language: \"><script>alert(1)</script>", "Language: ../../etc", "Language: -"] {
+        let doc = openwrite::parse(&format!("Title: X\n{bad}\n\nINT. A - DAY\n\nB.\n"));
+        let html = render::html::render(&doc, &opts);
+        assert!(html.contains(&expected), "{bad:?} was not refused");
+        assert!(!html.contains("<script>alert(1)</script>"), "{bad:?} reached the page");
+    }
+}
+
+/// The words a screen reader reads out come from the language file like every
+/// other word in the program, rather than being written into the renderer.
+#[test]
+fn the_exported_pages_landmarks_are_translatable() {
+    let doc = openwrite::parse("Title: A Script\n\nINT. KITCHEN - DAY\n\nShe waits.\n\nMAYA\nHi.\n");
+    let html = render::html::render(&doc, &Options::default());
+
+    for key in [
+        "export.skip_link",
+        "export.scenes",
+        "export.nav_hint",
+        "export.title_page_label",
+        "export.js_scene",
+        "export.js_help",
+    ] {
+        let text = openwrite::i18n::text(key, &[]);
+        assert!(html.contains(&text), "{key} is not on the page");
+        // And it is the catalogue's copy rather than a second one written into
+        // the renderer, which is what would drift.
+        assert!(!text.is_empty(), "{key} is empty");
+    }
+    assert!(html.contains(r#"aria-label="Screenplay: A Script""#));
+}
+
+/// Both halves of a dual dialogue say which half they are, by name.
+#[test]
+fn simultaneous_speech_labels_both_of_its_halves() {
+    let doc = openwrite::parse("INT. KITCHEN - DAY\n\nMAYA\nHi.\n\nBEN ^\nHi.\n");
+    let html = render::html::render(&doc, &Options::default());
+
+    assert!(html.contains(r#"aria-label="Speaking simultaneously, first: MAYA""#), "{html}");
+    assert!(html.contains(r#"aria-label="Speaking simultaneously, second: BEN""#), "{html}");
+}
+
+/// One `h1`, always, and it names the screenplay — otherwise the contents list
+/// and every scene heading are `h2` with nothing above them, and a screen
+/// reader user moving by heading starts halfway down the document.
+#[test]
+fn the_exported_page_has_exactly_one_top_level_heading() {
+    let with_title = openwrite::parse("Title: The Salt House\n\nINT. KITCHEN - DAY\n\nShe waits.\n");
+    let html = render::html::render(&with_title, &Options::default());
+    assert_eq!(html.matches("<h1").count(), 1, "{html}");
+    assert!(html.contains("The Salt House"));
+
+    // A working draft that has not been given a title yet still gets one, for
+    // a screen reader to find rather than for anybody to look at.
+    let untitled = openwrite::parse("INT. KITCHEN - DAY\n\nShe waits.\n");
+    let html = render::html::render(&untitled, &Options::default());
+    assert_eq!(html.matches("<h1").count(), 1, "{html}");
+    assert!(html.contains(r#"<h1 class="visually-hidden">"#), "{html}");
+    assert!(html.contains(".visually-hidden {"), "no rule to hide it with");
+
+    // And the title page being switched off does not lose it either.
+    let mut opts = Options::default();
+    opts.title_page = false;
+    assert_eq!(render::html::render(&with_title, &opts).matches("<h1").count(), 1);
+}
+
+/// The single-letter scene shortcuts are live only while the screenplay itself
+/// has focus. Bound to the document, as they once were, they fire while
+/// somebody is dictating into speech recognition software — which is what WCAG
+/// 2.1.4 Character Key Shortcuts is about.
+#[test]
+fn the_exported_pages_letter_shortcuts_need_the_screenplay_focused() {
+    let doc = openwrite::parse("INT. KITCHEN - DAY\n\nShe waits.\n");
+    let html = render::html::render(&doc, &Options::default());
+
+    assert!(html.contains("function listening()"), "no focus test at all");
+    assert!(html.contains("if (!listening()) { return; }"), "the handler does not use it");
+    assert!(html.contains("main.contains(el)"), "focus is not scoped to the screenplay");
+    // The way in for somebody who reaches the script with a mouse.
+    assert!(html.contains("main.focus({ preventScroll: true })"), "clicking in cannot arm it");
+}
+
+/// The title page is markup on the printed page and was not in the web page,
+/// so `_**THE LAST BUS**_` reached the browser as itself.
+#[test]
+fn emphasis_on_the_title_page_is_markup_in_the_export_too() {
+    let doc = openwrite::parse("Title: _**THE LAST BUS**_\nAuthor: *A. Writer*\n\nINT. A - DAY\n\nB.\n");
+    let html = render::html::render(&doc, &Options::default());
+
+    // Rendered as emphasis rather than carried through as punctuation.
+    assert!(html.contains("<h1>"), "{html}");
+    assert!(!html.contains("_**THE LAST BUS**_"), "the markers reached the page");
+    assert!(html.contains("THE LAST BUS"), "the title was lost with them");
+    assert!(html.contains("<strong>"), "bold was not rendered");
+    assert!(html.contains("<em>A. Writer</em>"), "the author's italics were not rendered");
+
+    // `<title>` and the landmark's name hold text, not markup, so there the
+    // emphasis comes off and nothing takes its place.
+    assert!(html.contains("<title>THE LAST BUS</title>"), "{html}");
+    assert!(html.contains(r#"aria-label="Screenplay: THE LAST BUS""#), "{html}");
+}

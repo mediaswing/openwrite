@@ -16,6 +16,13 @@
 //! `curl --config <file>`. The file is deleted when the request ends, whether
 //! it worked or not.
 //!
+//! That file has to go somewhere, and on Linux the temporary folder is `/tmp`,
+//! which everybody logged in shares. So the folder it goes in is made with a
+//! name drawn from the operating system's own randomness rather than from the
+//! process id, and made in a way that fails if anything is already there — see
+//! [`Scratch::new`]. A folder somebody else could name in advance is a folder
+//! they can create first, world-readable, and read the key straight out of.
+//!
 //! # It asks for PCM
 //!
 //! `output_format=pcm_24000` rather than the MP3 that is the default, because
@@ -447,14 +454,24 @@ fn quote(value: &str) -> String {
         .replace('\r', "\\r")
 }
 
-/// Write a file only its owner can read.
+/// Write a file only its owner can read, and only where there was no file
+/// before.
 ///
-/// The permissions are set as the file is made rather than afterwards: a
-/// `create` and then a `chmod` leaves a moment in which the key is readable,
-/// and that moment is all anybody would need.
+/// Two things, and both matter. The permissions are set as the file is made
+/// rather than afterwards: a `create` and then a `chmod` leaves a moment in
+/// which the key is readable, and that moment is all anybody would need.
+///
+/// And it is `create_new` rather than `create`, so a path that already exists
+/// is an error instead of something to open. `create` would happily write
+/// through a symbolic link somebody else had left there — into the writer's
+/// own files — and, worse, the mode below is applied only when a file is
+/// actually created, so opening one that was already there would have left it
+/// with whatever permissions its owner gave it and written the API key into it
+/// anyway. The unguessable directory in [`Scratch`] is what makes this
+/// condition unreachable; this is what makes it safe if it ever is not.
 fn write_private(path: &Path, contents: &[u8]) -> Result<(), Error> {
     let mut options = std::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
+    options.write(true).create_new(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
@@ -469,28 +486,70 @@ fn write_private(path: &Path, contents: &[u8]) -> Result<(), Error> {
         .map_err(|err| Error::Disk(format!("{}: {err}", path.display())))
 }
 
+/// A name nothing else can work out in advance.
+///
+/// There is no random number generator in the standard library, and this
+/// program has no dependencies to borrow one from. There is, though, a hasher
+/// whose keys the operating system seeds with random bytes — it is what stops
+/// anybody choosing a `HashMap`'s collisions on purpose. Hashing a counter, the
+/// process id and the clock with a fresh one of those gives a value that cannot
+/// be guessed, for exactly the reason the hasher could not be either.
+fn unique() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u64(COUNTER.fetch_add(1, Ordering::Relaxed));
+    hasher.write_u64(u64::from(std::process::id()));
+    if let Ok(since) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        hasher.write_u128(since.as_nanos());
+    }
+    format!("{:016x}", hasher.finish())
+}
+
 /// A folder for one request, which takes itself away afterwards.
 struct Scratch {
     dir: PathBuf,
 }
 
 impl Scratch {
+    /// A new folder, with a name nobody could have used first.
+    ///
+    /// The temporary folder is shared between everybody logged in on Linux —
+    /// `/tmp`, mode 1777 — so a name another user can work out in advance is a
+    /// name they can get to first. It used to be the process id and a counter
+    /// from zero, and both of those are readable off `ps`.
+    ///
+    /// Two changes make that not worth trying. The name comes from
+    /// [`unique`] rather than from anything visible. And the folder is made
+    /// with `create`, which fails when something is already there, rather than
+    /// `create_dir_all`, which succeeds — handing the request somebody else's
+    /// folder, with their permissions on it and their files already inside. The
+    /// mode goes on as it is created for the same reason it does in
+    /// [`write_private`].
     fn new() -> Result<Scratch, Error> {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!(
-            "openwrite-drama-{}-{unique}",
-            std::process::id()
-        ));
-        std::fs::create_dir_all(&dir)
-            .map_err(|err| Error::Disk(format!("{}: {err}", dir.display())))?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+        let base = std::env::temp_dir();
+        // A collision means the name was already taken, which should not happen
+        // and costs nothing to survive. Anything else is a real failure.
+        for _ in 0..16 {
+            let dir = base.join(format!("openwrite-drama-{}", unique()));
+            let mut builder = std::fs::DirBuilder::new();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::DirBuilderExt;
+                builder.mode(0o700);
+            }
+            match builder.create(&dir) {
+                Ok(()) => return Ok(Scratch { dir }),
+                Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(err) => return Err(Error::Disk(format!("{}: {err}", dir.display()))),
+            }
         }
-        Ok(Scratch { dir })
+        Err(Error::Disk(format!(
+            "{} had no unused name in it",
+            base.display()
+        )))
     }
 
     fn path(&self, name: &str) -> PathBuf {
@@ -571,6 +630,61 @@ mod tests {
     fn a_key_never_survives_into_a_message() {
         let key = "sk_secret";
         assert!(!redact("curl: (60) sk_secret failed", key).contains(key));
+    }
+
+    /// The folder for a request is one nobody could have got to first.
+    ///
+    /// On Linux the temporary folder is shared, so a predictable name is a name
+    /// another user creates first — world-readable, with a file already planted
+    /// where the key is about to be written.
+    #[test]
+    fn two_requests_never_share_a_folder_and_neither_name_can_be_guessed() {
+        let (one, two) = (Scratch::new().unwrap(), Scratch::new().unwrap());
+        assert_ne!(one.dir, two.dir);
+
+        // Nothing of the process in the name: that is what `ps` gives away.
+        let name = one.dir.file_name().unwrap().to_string_lossy().into_owned();
+        assert!(!name.contains(&std::process::id().to_string()), "{name}");
+        assert!(name.starts_with("openwrite-drama-"), "{name}");
+
+        for dir in [&one.dir, &two.dir] {
+            assert!(dir.is_dir());
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = std::fs::metadata(dir).unwrap().permissions().mode();
+                assert_eq!(mode & 0o077, 0, "{dir:?} is readable by somebody else");
+            }
+        }
+
+        let (kept, gone) = (one.dir.clone(), two.dir.clone());
+        drop(two);
+        assert!(!gone.exists(), "the folder outlived the request");
+        assert!(kept.exists(), "the wrong folder was taken away");
+    }
+
+    /// A file that is already there is never written through — not a planted
+    /// one, and not a symbolic link into the writer's own files.
+    #[test]
+    fn the_key_is_never_written_into_a_file_that_was_already_there() {
+        let scratch = Scratch::new().unwrap();
+        let path = scratch.path("curl.conf");
+
+        assert!(write_private(&path, b"first").is_ok());
+        // Second time round the path exists, and that is refused rather than
+        // opened: `create` would have written through it, and would have left
+        // whatever permissions it already had.
+        assert!(matches!(write_private(&path, b"second"), Err(Error::Disk(_))));
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "first");
+
+        #[cfg(unix)]
+        {
+            let target = scratch.path("elsewhere");
+            let link = scratch.path("planted.conf");
+            std::os::unix::fs::symlink(&target, &link).unwrap();
+            assert!(write_private(&link, b"xi-api-key: secret").is_err());
+            assert!(!target.exists(), "the key was written through the link");
+        }
     }
 
     #[test]

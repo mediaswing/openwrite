@@ -10,7 +10,15 @@
 //! happened. The dialog appears only when there is genuinely something to say.
 //!
 //! **It takes no for an answer.** Dismissing it dismisses it for the session,
-//! and the check does not come back to ask again.
+//! and the check does not come back to ask again. The dialog also carries the
+//! switch that stops it for good, kept in [`crate::settings`]: refusing the one
+//! thing this program does over the network unasked should not depend on
+//! knowing that an environment variable exists, and the offer to stop belongs
+//! where the asking happens rather than in a window nobody would think to open.
+//!
+//! That switch is in the language window as well — see
+//! [`App::update_check_control`] — because this dialog is the one place it
+//! cannot be reached from once it has been turned off.
 
 use super::{a11y, theme, App, Tone};
 use crate::t;
@@ -39,7 +47,11 @@ impl App {
         }
         self.update.asked = true;
         if update::disabled() {
-            log::info("update", "the check is turned off");
+            log::info("update", "the check is turned off by the environment");
+            return;
+        }
+        if !self.settings.update_check {
+            log::info("update", "the check is turned off in the settings");
             return;
         }
 
@@ -85,6 +97,46 @@ impl App {
         }
     }
 
+    /// The switch that stops the check, wherever it is being offered.
+    ///
+    /// Drawn in two places on purpose, and the same control in both: the dialog
+    /// that does the asking, which is where somebody wants it the moment they
+    /// are asked, and the language window, which is where they have to be able
+    /// to find it again afterwards. A switch that could only be turned off from
+    /// a dialog that never comes back is not a switch.
+    ///
+    /// Written down the moment it changes rather than on the way out of
+    /// whatever is holding it: the dialog is dismissed with Escape as often as
+    /// with a button, and a choice that survives only one of those routes is
+    /// not a choice. Answers whether it changed, so a caller can tell that
+    /// something was said already.
+    pub(super) fn update_check_control(&mut self, ui: &mut egui::Ui) -> bool {
+        let was = self.settings.update_check;
+        let mut wanted = was;
+        let switch = ui.checkbox(&mut wanted, t!("update.keep_checking"));
+        a11y::describe(&switch, t!("update.keep_checking.hint"));
+        if update::disabled() {
+            // Then the switch is not the whole story, and saying so is better
+            // than looking broken the next time the editor starts.
+            ui.label(
+                RichText::new(t!("update.note", variable = update::DISABLE_ENV))
+                    .weak()
+                    .small(),
+            );
+        }
+        if wanted == was {
+            return false;
+        }
+        self.settings.update_check = wanted;
+        self.settings.save();
+        self.announce(if wanted {
+            t!("status.update_check_on")
+        } else {
+            t!("status.update_check_off")
+        });
+        true
+    }
+
     pub(super) fn update_dialog(&mut self, ctx: &egui::Context) {
         self.poll_update();
         if !self.update.showing {
@@ -98,6 +150,7 @@ impl App {
         let mut download = false;
         let mut dismiss = false;
         let mut keep_open = true;
+        let mut changed = false;
 
         egui::Window::new(t!("update.title"))
             .open(&mut keep_open)
@@ -127,11 +180,7 @@ impl App {
                     }
                 });
                 ui.add_space(4.0);
-                ui.label(
-                    RichText::new(t!("update.note", variable = update::DISABLE_ENV))
-                        .weak()
-                        .small(),
-                );
+                changed = self.update_check_control(ui);
             });
 
         if download {
@@ -149,9 +198,16 @@ impl App {
             }
             self.update.showing = false;
         }
-        if dismiss || !keep_open || ctx.input(|i| i.key_pressed(Key::Escape)) {
+        // Consumed rather than read: `key_pressed` leaves the press in the
+        // frame for everything else to find too, so one Escape meant for the
+        // find bar closed this as well. Taking it means whatever handles it
+        // handles it once.
+        let escaped = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
+        if dismiss || !keep_open || escaped {
             self.update.showing = false;
-            self.announce(t!("status.update_dismissed"));
+            if !changed {
+                self.announce(t!("status.update_dismissed"));
+            }
         }
     }
 }

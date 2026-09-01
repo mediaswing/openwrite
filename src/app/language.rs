@@ -124,6 +124,20 @@ impl App {
                     });
                 }
 
+                // The switch that stops the editor asking GitHub about new
+                // versions. Not a language setting, and here anyway: this
+                // window is where the settings that belong to the editor rather
+                // than to a screenplay are changed, and the only other place
+                // the switch appears is the dialog it turns off — which, once
+                // it is off, never comes back to be turned on again.
+                #[cfg(feature = "update")]
+                {
+                    ui.add_space(8.0);
+                    ui.separator();
+                    ui.add_space(4.0);
+                    self.update_check_control(ui);
+                }
+
                 ui.add_space(6.0);
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui.button(t!("button.close")).clicked() {

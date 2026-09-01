@@ -460,12 +460,16 @@ update.yours = "You have {version}."
 update.download = "Download"
 update.download.hint = "Opens {url} in your browser"
 update.not_now = "Not now"
-update.note = "Checked once at startup. Set {variable} to stop it."
+update.note = "{variable} is set in this environment, which stops the check whatever this box says."
+update.keep_checking = "Keep checking for new versions"
+update.keep_checking.hint = "Unticked, the editor never asks GitHub anything. It is the only thing this program does over the network without being asked."
 
 status.update_available = "Version {version} is available. You have {yours}."
 status.download_page = "Opened the download page for {tag}"
 status.link_copied = "{error}. The link is on the clipboard."
 status.update_dismissed = "Carrying on with this version"
+status.update_check_on = "The editor will check for new versions at startup."
+status.update_check_off = "The editor will not check for new versions again."
 
 
 # --------------------------------------------------------------- the language
@@ -536,6 +540,40 @@ a11y.which_model = "Which model"
 a11y.suggest = "Suggest. {ask}"
 a11y.log = "Debug log: {summary}"
 a11y.drama_line = "Line {index}. {who}, {treatment}. {text}"
+
+
+# ------------------------------------------------- the exported web page
+#
+# "Export" writes the screenplay out as a web page, and these are the parts of
+# it that are not the screenplay: the landmarks, the contents list, and the two
+# sentences it speaks aloud as somebody moves through it. They are separate from
+# the a11y lines above because these leave the building — the exported file goes
+# to a producer, a script editor, an actor — and it carries this language with
+# it rather than the language of whoever opens it.
+#
+# The page also declares which language it is in, so a screen reader pronounces
+# it properly. That is taken from the `Language:` line on the title page if the
+# screenplay has one, and otherwise from the language this list is written in.
+
+export.untitled = "Screenplay"
+export.skip_link = "Skip to screenplay"
+export.main_label = "Screenplay: {title}"
+export.title_page_label = "Title page"
+export.scenes = "Scenes"
+export.nav_hint = "Select the screenplay, then press ? for the keyboard shortcuts."
+export.scene_number = "Scene number {number}"
+export.dialogue_label = "Dialogue: {name}"
+export.dual_label = "Simultaneous dialogue"
+# Two people talking over each other. Both halves are labelled so that a screen
+# reader user knows which of the two columns they have landed in.
+export.dual_first = "Speaking simultaneously, first: {name}"
+export.dual_second = "Speaking simultaneously, second: {name}"
+# Spoken after each jump between scenes.
+export.js_scene = "Scene {index} of {total}: {heading}"
+# Spoken when ? is pressed. The letters n, j, p, k, g and G are the keys
+# themselves and stay as they are; the words around them are yours.
+export.js_help = "Keyboard shortcuts: n or j next scene, p or k previous scene, "
+                 "g first scene, shift G last scene."
 
 
 # ------------------------------------------------------------- the audio drama

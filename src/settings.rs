@@ -1,12 +1,15 @@
-//! The two things the editor has to remember between runs.
+//! The three things the editor has to remember between runs.
 //!
 //! Almost nothing here is a setting, on purpose: a screenplay carries its own
 //! state in its own file (see [`crate::document`]), and an editor that
 //! remembers which panes were open is an editor that eventually opens wrong.
-//! There are two exceptions, and both earn it. The language, because somebody
-//! who has chosen to work in their own language should not have to choose
-//! again every morning. And the ElevenLabs key, because a key that had to be
-//! pasted in again before every recording would not be worth having.
+//! There are three exceptions, and each earns it. The language, because
+//! somebody who has chosen to work in their own language should not have to
+//! choose again every morning. The ElevenLabs key, because a key that had to be
+//! pasted in again before every recording would not be worth having. And
+//! whether to check for a newer version, because that is the one thing this
+//! program does over the network without being asked, and an answer of no has
+//! to survive the restart it is given in.
 //!
 //! The file is written only when something changes, and a file that cannot be
 //! read is not an error worth interrupting anybody over: the defaults are
@@ -77,6 +80,14 @@ pub struct Settings {
     /// one. See the note at the top of this file about what storing it here
     /// does and does not protect.
     pub elevenlabs_key: String,
+    /// Whether to ask GitHub at startup if there is a newer version.
+    ///
+    /// On by default, and turned off from the dialog that does the asking —
+    /// [`crate::update`] is the one thing this program does over the network
+    /// without being asked, so refusing it should not require knowing that an
+    /// environment variable exists. `OPENWRITE_NO_UPDATE_CHECK` still overrides
+    /// this, for a machine where the answer has to be no whatever the file says.
+    pub update_check: bool,
 }
 
 impl Default for Settings {
@@ -84,6 +95,7 @@ impl Default for Settings {
         Settings {
             language: crate::i18n::AUTO.to_string(),
             elevenlabs_key: String::new(),
+            update_check: true,
         }
     }
 }
@@ -173,6 +185,12 @@ impl Settings {
             match key.trim() {
                 "language" if !value.is_empty() => settings.language = value.to_string(),
                 "elevenlabs_key" => settings.elevenlabs_key = value.to_string(),
+                // Anything but a plain no is a yes: a line somebody has typed
+                // over should leave the check on rather than quietly off.
+                "update_check" => {
+                    settings.update_check =
+                        !matches!(value.to_ascii_lowercase().as_str(), "no" | "false" | "off" | "0")
+                }
                 _ => {}
             }
         }
@@ -197,9 +215,15 @@ impl Settings {
              #\n\
              # elevenlabs_key: for the Audio Drama tab. Empty means the tab asks\n\
              # for one.\n\
-             elevenlabs_key = \"{}\"\n",
+             elevenlabs_key = \"{}\"\n\
+             #\n\
+             # update_check: whether to ask GitHub at startup whether there is a\n\
+             # newer version. \"no\" stops it. This is the only thing the program\n\
+             # does over the network without being asked for it.\n\
+             update_check = \"{}\"\n",
             self.language,
-            self.elevenlabs_key.trim()
+            self.elevenlabs_key.trim(),
+            if self.update_check { "yes" } else { "no" }
         )
     }
 }
@@ -215,6 +239,17 @@ fn write_private(path: &std::path::Path, contents: &[u8]) -> std::io::Result<()>
         options.mode(0o600);
     }
     let mut file = options.open(path)?;
+    // `mode` above is applied only to a file this call creates. One that was
+    // already there — made by an older build, restored from a backup, copied
+    // in from another machine — keeps whatever permissions it arrived with,
+    // and there is a key going into it. So it is said again now the handle is
+    // open, on the handle rather than on the path, which leaves nothing in
+    // between for anybody to swap.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+    }
     file.write_all(contents)?;
     file.flush()
 }
@@ -228,6 +263,7 @@ mod tests {
         let settings = Settings {
             language: "fr".to_string(),
             elevenlabs_key: "sk_abc123".to_string(),
+            update_check: false,
         };
         assert_eq!(Settings::parse(&settings.to_text()), settings);
     }
@@ -248,6 +284,46 @@ mod tests {
         let text = Settings::default().to_text();
         assert!(text.contains("KEEP THIS FILE TO YOURSELF"));
         assert!(text.contains(KEY_ENV));
+    }
+
+    #[test]
+    fn the_update_check_can_be_turned_off_and_survives_a_restart() {
+        // On unless it has been turned off.
+        assert!(Settings::default().update_check);
+        assert!(Settings::parse("").update_check);
+
+        let off = Settings { update_check: false, ..Settings::default() };
+        assert!(!Settings::parse(&off.to_text()).update_check);
+        assert!(Settings::parse(&Settings::default().to_text()).update_check);
+
+        for no in ["no", "No", "false", "off", "0"] {
+            assert!(!Settings::parse(&format!("update_check = \"{no}\"\n")).update_check, "{no}");
+        }
+        // Anything else leaves it on rather than quietly off.
+        for yes in ["yes", "true", "on", "1", "perhaps"] {
+            assert!(Settings::parse(&format!("update_check = \"{yes}\"\n")).update_check, "{yes}");
+        }
+    }
+
+    /// The file holds a key, and the permissions have to be right on a file
+    /// that was already there as well as on one this call makes.
+    #[test]
+    #[cfg(unix)]
+    fn a_settings_file_that_already_existed_is_still_closed_to_everybody_else() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("openwrite-settings-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.toml");
+
+        // As an older build, or a restored backup, might have left it.
+        std::fs::write(&path, b"language = \"en\"\n").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        write_private(&path, b"elevenlabs_key = \"sk_secret\"\n").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o077, 0, "{path:?} is still readable by somebody else");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
