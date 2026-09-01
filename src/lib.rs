@@ -52,6 +52,7 @@ pub mod json;
 pub mod layout;
 pub mod log;
 pub mod parser;
+pub mod recovery;
 pub mod render;
 pub mod settings;
 pub mod shorthand;

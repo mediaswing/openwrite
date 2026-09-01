@@ -191,6 +191,39 @@ pub fn write(document: &Document) -> String {
     out
 }
 
+/// Put an extra key into the header of an already-written document.
+///
+/// The `.sct` header is a list of `key: value` lines and [`read`] ignores every
+/// key it does not know, which is what makes a file written by a later version
+/// still open in this one. That same property lets something outside this
+/// module keep a note of its own in a document without the format having to
+/// grow a field for it — [`crate::recovery`] records which file a recovered
+/// draft came from that way.
+///
+/// Only meaningful on the output of [`write`]: a document with no header has
+/// nowhere to put this.
+pub fn with_header(written: &str, key: &str, value: &str) -> String {
+    let opening = format!("{MAGIC}\n");
+    match written.strip_prefix(&opening) {
+        Some(rest) => format!("{opening}{key}: {}\n{rest}", escape(value)),
+        None => written.to_string(),
+    }
+}
+
+/// Read one header value back, without reading the document around it.
+///
+/// The pair of [`with_header`]. Answers `None` for a file with no header, a
+/// header that never ended, or a key that is not in it.
+pub fn header_value(text: &str, key: &str) -> Option<String> {
+    let text = one_line_ending(text);
+    let rest = text.strip_prefix(MAGIC)?.strip_prefix('\n')?;
+    let (header, _) = split_header(rest)?;
+    header.lines().find_map(|line| {
+        let (found, value) = line.split_once(':')?;
+        (found.trim() == key).then(|| unescape(value.trim()))
+    })
+}
+
 fn write_profile(out: &mut String, profile: &Profile) {
     out.push_str(&format!("character: {}\n", escape(&profile.name)));
     for (key, value) in [
@@ -469,5 +502,53 @@ mod tests {
         let (header, source) = written.split_once("\n---\n").unwrap();
         assert!(header.lines().all(|l| l == MAGIC || l.contains(':')));
         assert!(source.starts_with("INT. SALT HOUSE - NIGHT"));
+    }
+}
+
+#[cfg(test)]
+mod header_tests {
+    use super::*;
+
+    #[test]
+    fn an_extra_header_key_survives_the_round_trip_and_disturbs_nothing() {
+        let mut document = Document::new("INT. KITCHEN - DAY\n\nShe waits.\n");
+        document.working.caret = Some(12);
+        document.bible.world = "A salt lake.".to_string();
+
+        let written = with_header(&write(&document), "origin", "/home/a/The Last Bus.sct");
+        assert_eq!(
+            header_value(&written, "origin").as_deref(),
+            Some("/home/a/The Last Bus.sct")
+        );
+        // And the document itself reads back exactly as it would have without
+        // it: an unknown key is ignored, which is the property this relies on.
+        assert_eq!(read(&written), document);
+        assert_eq!(read(&written), read(&write(&document)));
+    }
+
+    #[test]
+    fn a_path_with_awkward_characters_in_it_comes_back_whole() {
+        // Header values are one line each, so a newline in a path — which is
+        // legal on Unix — has to survive as an escape rather than end the line.
+        for origin in ["/tmp/a: b.sct", "/tmp/back\\slash.sct", "/tmp/two\nlines.sct"] {
+            let written = with_header(&write(&Document::new("A.\n")), "origin", origin);
+            assert_eq!(header_value(&written, "origin").as_deref(), Some(origin), "{origin:?}");
+            assert_eq!(read(&written).source, "A.\n");
+        }
+    }
+
+    #[test]
+    fn a_file_with_no_header_has_no_values_and_is_not_given_one() {
+        let bare = "INT. KITCHEN - DAY\n";
+        assert_eq!(header_value(bare, "origin"), None);
+        // Nowhere to put it, so it is left exactly as it was rather than
+        // being given a header it never had.
+        assert_eq!(with_header(bare, "origin", "/tmp/x"), bare);
+    }
+
+    #[test]
+    fn a_key_that_is_not_there_is_none_rather_than_an_empty_string() {
+        let written = write(&Document::new("A.\n"));
+        assert_eq!(header_value(&written, "origin"), None);
     }
 }

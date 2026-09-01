@@ -15,6 +15,7 @@ mod drama;
 mod language;
 pub(crate) mod shortcuts;
 mod theme;
+mod recovery_dialog;
 #[cfg(feature = "update")]
 mod update_dialog;
 
@@ -265,6 +266,11 @@ pub struct App {
     tone: Tone,
     error: Option<String>,
     confirm: Option<Pending>,
+
+    /// When a copy of unsaved work was last written, and one found waiting at
+    /// startup. See [`crate::recovery`].
+    last_kept: std::time::Instant,
+    recovered: Option<crate::recovery::Recovered>,
 }
 
 impl App {
@@ -323,6 +329,8 @@ impl App {
             tone: Tone::Info,
             error: None,
             confirm: None,
+            last_kept: std::time::Instant::now(),
+            recovered: None,
         };
 
         match path {
@@ -340,6 +348,9 @@ impl App {
                 app.announce(t!("status.first_screenplay"));
             }
         }
+        // After the document is on screen, so the question is asked over
+        // something rather than over an empty window.
+        app.look_for_a_copy();
         app
     }
 
@@ -381,6 +392,10 @@ impl App {
 
     fn load(&mut self, path: &Path) {
         let timer = log::Timer::start();
+        // What is being put down, so its copy can go with it. Nothing at all on
+        // the first load of a session, which is what stops the copy this run
+        // may be about to be offered being deleted before it is seen.
+        let replacing = (self.dirty || self.path.is_some()).then(|| self.path.clone());
         match std::fs::read_to_string(path) {
             Ok(text) => {
                 let bytes = text.len();
@@ -399,6 +414,9 @@ impl App {
                 self.source = document.source;
                 self.bible = document.bible;
                 self.bible_sel = (!self.bible.profiles.is_empty()).then_some(0);
+                if let Some(replaced) = replacing {
+                    self.forget_copy(replaced);
+                }
                 self.path = Some(path.to_path_buf());
                 self.dirty = false;
                 self.needs_reparse = true;
@@ -443,6 +461,7 @@ impl App {
 
     fn save_to(&mut self, path: PathBuf) {
         let timer = log::Timer::start();
+        let previous = self.path.clone();
         let contents = document::write_for(&path, &self.document());
         let bytes = contents.len();
         match std::fs::write(&path, contents) {
@@ -473,6 +492,12 @@ impl App {
                 self.confirm_done(message);
                 self.path = Some(path);
                 self.dirty = false;
+                // The work is on the writer's own disk now, so the copy
+                // standing in for it has nothing left to stand in for. Both
+                // names, because Save As moves the document to a new one and
+                // leaves the old copy behind otherwise.
+                self.forget_copy(previous);
+                self.forget_copy(self.path.clone());
             }
             Err(err) => {
                 log::error("save", format!("{err}, after {} ms", timer.ms()));
@@ -794,6 +819,10 @@ impl App {
         self.confirm = None;
         match pending {
             Pending::New => {
+                let replacing = (self.dirty || self.path.is_some()).then(|| self.path.clone());
+                if let Some(replaced) = replacing {
+                    self.forget_copy(replaced);
+                }
                 self.source = String::new();
                 self.bible = Bible::default();
                 self.bible_sel = None;
@@ -810,7 +839,14 @@ impl App {
                 self.announce(t!("status.new_screenplay"));
             }
             Pending::Open => self.open_dialog(),
-            Pending::Close => std::process::exit(0),
+            Pending::Close => {
+                // They were asked about the unsaved work and said to close
+                // anyway, so the copy standing in for it goes too. Left behind,
+                // it would offer back at the next start exactly the draft they
+                // had just chosen to abandon.
+                self.forget_copy(self.path.clone());
+                std::process::exit(0)
+            }
         }
     }
 
@@ -1411,6 +1447,9 @@ impl App {
     // -- dialogs ------------------------------------------------------------
 
     fn dialogs(&mut self, ctx: &egui::Context) {
+        // First: it is a question about work that is not on screen, and every
+        // other dialog is about work that is.
+        self.recovery_dialog(ctx);
         #[cfg(feature = "update")]
         self.update_dialog(ctx);
         self.debug_log_dialog(ctx);
@@ -1678,6 +1717,8 @@ impl eframe::App for App {
         // see a screenplay.
         #[cfg(feature = "update")]
         self.check_for_update(&ctx);
+
+        self.keep_a_copy(&ctx);
 
         for action in shortcuts::triggered(&ctx, &self.bindings) {
             self.perform(action, &ctx);
